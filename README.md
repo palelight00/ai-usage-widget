@@ -157,6 +157,11 @@ python3 ai_usage_fetch.py --public "$HOME/Dropbox/ai-usage/ai-usage.json"
 2. iPhone の Scriptable で `AIUsage` を 1 回実行すると入力を求められるので、リンクを貼る
 3. リンクは **Keychain（`ai-usage-url`）に保存**され、スクリプトには書き込まれない
 
+リンクを変えたくなったら、**Scriptable アプリ内で `AIUsage` を実行するだけ**でよい。
+現在のリンクが入った入力欄が出るので、書き換えて「保存」を押す。
+空にして保存すると登録が消え、iCloud 経由に戻る。
+（ウィジェットとショートカットからは画面を出さないので、自動実行の邪魔にはならない）
+
 **リンクをスクリプトに直書きしないこと。** `AIUsage.js` は iCloud 同期され配布物にも入るため、
 直書きすると配布先にリンクが漏れる。変更したいときは Scriptable で
 `Keychain.remove("ai-usage-url")` を実行してから、アプリ内で 1 回動かすと再入力できる。

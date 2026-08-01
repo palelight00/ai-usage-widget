@@ -88,10 +88,12 @@ const STRINGS = {
     minutes: (n) => `${n}分`,
     window: "使用枠",
     setupTitle: "共有リンクの登録",
+    setupTitleEdit: "共有リンクの変更",
+    keep: "変更しない",
     setupBody:
       "ai-usage.json の共有リンクを貼り付けてください。\n" +
       "Dropbox / Google ドライブ / OneDrive などに対応しています。\n" +
-      "空のまま保存すると iCloud 経由のままになります。",
+      "空にして保存すると登録を消し、iCloud 経由に戻します。",
     save: "保存",
     later: "あとで",
     probeOk: "取得できました",
@@ -139,10 +141,12 @@ const STRINGS = {
     minutes: (n) => `${n} min`,
     window: "Limit",
     setupTitle: "Register share link",
+    setupTitleEdit: "Change share link",
+    keep: "Keep current",
     setupBody:
       "Paste the share link to ai-usage.json.\n" +
       "Dropbox, Google Drive and OneDrive links are supported.\n" +
-      "Leave it empty to keep using iCloud.",
+      "Save an empty field to clear it and fall back to iCloud.",
     save: "Save",
     later: "Later",
     probeOk: "Fetched successfully",
@@ -744,16 +748,28 @@ function buildWidget(payload, family) {
 // 未登録のときだけ、アプリ内実行で共有リンクの入力を求める。
 // ウィジェットやショートカットからは絶対に出さない（画面を出せないため）。
 async function promptForRemoteUrl() {
+  const current = remoteUrl() || "";
   const alert = new Alert();
-  alert.title = T.setupTitle;
+  alert.title = current ? T.setupTitleEdit : T.setupTitle;
   alert.message = T.setupBody;
-  alert.addTextField("https://...", "");
+  // 現在の値を入れておく。空にして保存すれば登録を消せる
+  alert.addTextField("https://...", current);
   alert.addAction(T.save);
-  alert.addCancelAction(T.later);
+  alert.addCancelAction(current ? T.keep : T.later);
   const tapped = await alert.presentAlert();
   if (tapped !== 0) return;
   const value = (alert.textFieldValue(0) || "").trim();
-  if (!value) return;
+
+  if (!value) {
+    // 空で保存 = 登録を消して iCloud 経由に戻す
+    try {
+      if (Keychain.contains(URL_KEYCHAIN_KEY)) Keychain.remove(URL_KEYCHAIN_KEY);
+    } catch (e) {
+      // 消せなくても描画は続ける
+    }
+    return;
+  }
+  if (value === current) return; // 変更が無ければテストもしない
   try {
     Keychain.set(URL_KEYCHAIN_KEY, value);
   } catch (e) {
@@ -774,7 +790,9 @@ async function promptForRemoteUrl() {
 
 const family = config.runsInWidget ? config.widgetFamily || "medium" : "medium";
 
-if (config.runsInApp && !remoteUrl()) {
+// アプリ内で実行したときは、毎回リンクを確認・変更できるようにする。
+// （ウィジェットやショートカットからは画面を出せないので絶対に呼ばない）
+if (config.runsInApp) {
   await promptForRemoteUrl();
 }
 
