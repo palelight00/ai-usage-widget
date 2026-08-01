@@ -1,5 +1,9 @@
 # ai-usage — Claude / Codex 使用枠ウィジェット
 
+> このファイルは **Claude Code などの AI コーディング支援に読ませる前提の作業メモ**。
+> 「なぜそう作ったか」「何を試して駄目だったか」「再検討しないと決めたこと」を残してある。
+> 手を入れる前に読むと、同じ回り道をせずに済む。使い方は `README.md` を見ること。
+
 ## これは何か
 
 Claude と Codex のサブスク使用枠（5時間枠・週次枠）を、Mac 側で収集して JSON に書き出し、
@@ -102,12 +106,15 @@ API も JSONL も駄目なときは、API 側の失敗理由がそのまま `sta
   Codex の優先順位は **API → JSONL → 前回値**で、JSONL が読めるならそれを使う
   （前回値より、古くとも実データを優先する）。ウィジェットに最終取得時刻を必ず出す。
 
-## 環境
+## 前提としている環境
 
-- MacBook Pro（Apple Silicon / macOS 26 系）、常時起動・スリープしない設定
-- Claude Code は最近デスクトップアプリを主に使用（= statusline 経路は保険にしかならない。
-  OAuth ポーリングが本命という設計判断の理由）
-- iPhone に Scriptable を入れて使う
+- **常時起動・スリープしない Mac**（Apple Silicon / macOS 26 系で確認）。
+  30 分ごとの収集をこの Mac が担うので、中継サーバーを持たない設計にできる
+- **Claude Code はデスクトップアプリ主体で使う**。これが statusline 経路を採らず
+  OAuth ポーリングを本命にした理由（アプリでは statusline が発火しない）
+- iPhone に Scriptable を入れる
+- 動作確認したプランは Claude Max / Codex team。**他プランは未検証**で、
+  `limits[]` の構成や Codex の `secondary_window` が異なる可能性がある
 
 ## 作業中の方針
 
@@ -133,5 +140,3 @@ API も JSONL も駄目なときは、API 側の失敗理由がそのまま `sta
 ## 参考
 
 - Claude Code statusline の `rate_limits` 仕様（公式）: https://code.claude.com/docs/en/statusline
-- 元の構想メモ: `docs/2026-07-26_claude-codex-usage-widget-draft.md`（未作成。
-  このパスは当初の想定で、実物は存在しない）

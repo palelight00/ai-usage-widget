@@ -1,19 +1,39 @@
 # AI Usage Widget
 
 Claude と Codex のサブスク使用枠を Mac で集めて JSON に書き出し、iPhone の
-Scriptable ウィジェットで見る。**ウィジェットの表示は端末の言語に追従する**
-（日本語以外は英語）。
+Scriptable ウィジェットで見る。表示は端末の言語に追従する（日本語以外は英語）。
 
-> **English** — A macOS collector + iOS (Scriptable) widget that shows how much of your
-> Claude and Codex subscription limits you have used. The Mac writes a small JSON every
-> 30 minutes; the widget fetches it over HTTPS from a share link (Dropbox / Google Drive /
-> OneDrive / your own server), falling back to iCloud and an on-device cache.
-> The widget follows the device language: Japanese on Japanese devices, English otherwise.
+> ### ⚠️ 使う前に必ずお読みください
+>
+> **このツールは非公開エンドポイントを 2 つ使っています。**
+>
+> | | エンドポイント |
+> |---|---|
+> | Claude | `api.anthropic.com/api/oauth/usage` |
+> | Codex | `chatgpt.com/backend-api/codex/usage` |
+>
+> いずれも公式に文書化されたものではなく、**予告なく変わって動かなくなります。**
+> 各サービスの利用規約はご自身で確認してください。
+>
+> **ローカルの認証情報を読みます**（macOS keychain の `Claude Code-credentials` と
+> `~/.codex/auth.json`）。**読み取るだけで Mac の外には出しません。**書き出す JSON に
+> 含まれるのは使用率・リセット時刻・状態だけです。とはいえ認証情報に触れるので、
+> **実行前に `ai_usage_fetch.py` をご自身の目で読んでください。**
+>
+> 個人が自分用に作ったものです。**無保証**です。詳しくは [READ_FIRST.md](READ_FIRST.md)。
+
+> ### English
+>
+> A macOS collector + iOS (Scriptable) widget showing how much of your Claude and Codex
+> subscription limits you have used. The Mac writes a small JSON every 30 minutes; the
+> widget fetches it over HTTPS from a share link (Dropbox / Google Drive / OneDrive / your
+> own server), falling back to iCloud and an on-device cache. The widget follows the
+> device language: Japanese on Japanese devices, English otherwise.
 >
 > **This uses undocumented endpoints and can break without notice.** It reads OAuth tokens
 > from the local keychain and `~/.codex/auth.json` but never sends them anywhere — only
-> usage percentages, reset times and status leave the Mac. Read `ai_usage_fetch.py`
-> before running it. No warranty. See `READ_FIRST.md` before using or redistributing.
+> usage percentages, reset times and status leave the Mac. Read `ai_usage_fetch.py` before
+> running it. No warranty. See [READ_FIRST.md](READ_FIRST.md) before using or redistributing.
 
 ```
 Mac（常時起動）
