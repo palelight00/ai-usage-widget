@@ -1,3 +1,5 @@
+[English](README.en.md) | **日本語**
+
 # AI Usage Widget
 
 Claude と Codex のサブスク使用枠を Mac で集めて JSON に書き出し、iPhone の
