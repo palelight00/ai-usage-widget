@@ -1,0 +1,137 @@
+# ai-usage — Claude / Codex 使用枠ウィジェット
+
+## これは何か
+
+Claude と Codex のサブスク使用枠（5時間枠・週次枠）を、Mac 側で収集して JSON に書き出し、
+iPhone の Scriptable ウィジェットに表示する。実装詳細と手順は `README.md` にある。
+
+```
+Mac（常時起動）
+├─ ai_usage_fetch.py … Claude は非公式 OAuth、Codex は内部 API。
+│                      Codex は失敗時のみ ~/.codex のログにフォールバック
+├─ launchd で 30 分ごとに実行
+└─ 出力: iCloud Drive/Scriptable/ai-usage.json
+iPhone
+└─ AIUsage.js（Scriptable ウィジェット）が上の JSON を読んで描画
+```
+
+## 現在地（最重要）
+
+**Phase 0 / 1 / 2 完了（2026-07-31）。実機で同期まで確認済み。**
+残りは運用と、必要になったときの Phase 3（Swift 化）だけ。
+
+**iCloud 経由は使い物にならなかった。**ウィジェット拡張はオンデマンド・ダウンロードを
+起こせず、ショートカット経由で読めた中身も 2 時間前だった。4 通り試して解決せず、
+**Dropbox 共有リンクを HTTPS で取る方式に変えたところ即座に解決した。**
+iCloud に戻そうとしないこと。
+
+前バージョンのこのファイルは「コードは合成データでのみ動作確認済み」と書いていたが、
+実際にはコードそのものが存在していなかった。2026-07-26 に実物のレスポンスと
+JSONL を見てから書き直したのが現在の `ai_usage_fetch.py`。確定した事実:
+
+- Claude の OAuth トークンは **keychain の `Claude Code-credentials`**。
+  `~/.claude/.credentials.json` は**存在しない**（コードは両方見る）。
+- `https://api.anthropic.com/api/oauth/usage` は 200 を返す。使うキーは
+  `limits[]`（`kind`/`percent`/`resets_at`/`is_active`/`scope.model.display_name`）、
+  フォールバックに `five_hour`/`seven_day` の `utilization`、加えて `extra_usage`。
+  `PCT_KEYS` などの候補リストは不要になったので廃止した。
+- Codex は **`https://chatgpt.com/backend-api/codex/usage`（`~/.codex/auth.json` の
+  `tokens.access_token` + `chatgpt-account-id` ヘッダ）が本命**。常に現在値を返す。
+  失敗時のみ rollout JSONL（`payload.rate_limits`）にフォールバックする。
+- **JSONL はアプリを起動しているだけでは更新されない。** `rate_limits` は API レスポンスに
+  同梱されて記録されるため、実際にターンを回さないと 1 件も増えない（実測確認済み）。
+  だから「Codex を常時起動しておく」は解決策にならない。
+- **keychain を更新するのは Claude Code CLI だけ。**デスクトップアプリも、その
+  **スケジュール実行（ルーティン）も更新しない**（アプリは `Claude Safe Storage` を使う。
+  失効中に 6 回以上ルーティンが走っても `token_exp` が動かないことを実測で確認）。
+  アクセストークンは約 8 時間で切れるので、アプリだけ使っていると失効し続ける
+  （実測: 27 時間・53 回連続の `login_required`）。
+- **`claude --version` では更新されない。`claude -p` のように認証を通る経路が要る**
+  （両方とも実測）。401 のときだけ 1 ターン回して再試行する。成功すれば約 8 時間もつので
+  試行は 1 時間に 1 回まで（`~/.ai-usage/cli_refresh.stamp`）。無駄打ちは 429 を招く。
+  リフレッシュトークンは自前で使わない（ローテートするため CLI を壊す）。
+- Codex の `resets_at` / `reset_at` は **unix 秒**（Claude 側は ISO 文字列）。
+  枠の長さは API が `limit_window_seconds`、JSONL が `window_minutes` で**単位が違う**。
+  現行 team プランは secondary が `null` で週次のみなので、
+  **`primary` = 5 時間枠と決め打ちしない**（枠の長さで判定する）。
+
+キー名の詳細と出力フォーマットは `README.md` に写してある。
+
+### 壊れたときにやること
+
+```bash
+python3 ai_usage_fetch.py --raw      # 生レスポンスと生イベントを見る
+python3 ai_usage_fetch.py --stdout   # 書き出さずに結果 JSON を見る
+tail -n 20 ~/.ai-usage/fetch.err.log # launchd 実行時のエラー
+```
+
+Claude が `login_required` なら keychain を確認する。
+Codex が `login_required` なら `~/.codex/auth.json` を確認する。
+
+API も JSONL も駄目なときは、API 側の失敗理由がそのまま `status` に出る。
+**「codex を起動して `/status`」では直らない**（JSONL は実際にターンを
+回さないと増えないため）。API 側の復旧を優先すること。
+
+`empty` は通信できているのに枠が読めない状態＝キー名の変更。`--raw` で実物を見る。
+
+## 決まっていること（再検討しない）
+
+- **ウィジェットの本命は Dropbox 共有リンク（HTTPS）。**ウィジェット拡張は iCloud の
+  ダウンロードを起こせないがネットワークは使える。`public/ai-usage.json` を Dropbox に
+  書き、共有リンクから取る。リンクは **Keychain（`ai-usage-url`）** に置き、スクリプトに
+  直書きしない（`AIUsage.js` は配布物に入るため）。順序は リンク → iCloud → 控え。
+- **ウィジェット拡張からは iCloud のダウンロードを起こせない。**ショートカットの拡張からは
+  読めるので、iOS のオートメーションで `AIUsage` を定期実行して端末内の控えを更新する。
+  アクションは `Run Script` だけにする（`Refresh All Widgets` を足すとアプリが前面に出る。
+  `Run In App` も OFF）。手順は README にある。
+- **iCloud には中身が変わったときだけ書く。**30 分ごとに無条件で書き換えると、
+  端末へ配り終える前に次の版が来て、いつまでも追いつかない（実測: iPhone に 2 時間前の
+  版が渡った）。無変化でも 2 時間ごとに 1 回は書き、Mac の死活が分かるようにする。
+  ローカルの `last.json` は毎回 atomic に更新する（そちらが正本）。
+- **iCloud に書くファイルは `os.replace()` で置き換えない。**inode が変わると iCloud に
+  「削除 + 新規作成」と見え、端末側のコピーが毎回無効化されてウィジェットが
+  ダウンロード待ちになる（実際に同期が止まった）。`write_in_place()` を使う。
+- **VPS を立てない。** Mac が常時起動なので中継サーバーは不要。
+- **claude.ai を Playwright でスクレイピングしない。** 壊れやすく、規約上もグレー。
+  データはローカルにあるので必要がない。
+- **認証情報を Mac の外に出さない。** 転送するのは使用率・リセット時刻・状態だけ。
+- **まず Scriptable、次に Swift。** Swift 化は Phase 3 で、判断基準は README に書いた 5 項目。
+- **取得失敗時は前回の `windows` を残す。** `status` を差し替え、`stale` と
+  `last_attempt_at` を足す（`fetched_at` は前回成功時のまま）。
+  200 が返っても枠が 1 件も読めなければ `empty` 扱い。
+  Codex の優先順位は **API → JSONL → 前回値**で、JSONL が読めるならそれを使う
+  （前回値より、古くとも実データを優先する）。ウィジェットに最終取得時刻を必ず出す。
+
+## 環境
+
+- MacBook Pro（Apple Silicon / macOS 26 系）、常時起動・スリープしない設定
+- Claude Code は最近デスクトップアプリを主に使用（= statusline 経路は保険にしかならない。
+  OAuth ポーリングが本命という設計判断の理由）
+- iPhone に Scriptable を入れて使う
+
+## 作業中の方針
+
+- 非公式エンドポイントと JSONL 構造は予告なく変わる。**壊れないコードより、
+  `--raw` で実物を見て 5 分で直せるコード**を維持する。防御的パースを薄くしない。
+- Phase を飛ばさない。数値が取れる確証を得る前にウィジェットの見た目を触らない。
+- 秒単位のリアルタイム性は要件外。30〜60 分間隔で十分。
+
+## 未決事項
+
+- ~~launchd の参照先~~ → 決定。`install.sh` がリポジトリ内の `ai_usage_fetch.py` を
+  直接指す plist（`local.ai-usage`）を生成する。`~/.ai-usage/` はキャッシュとログ専用。
+- ~~`install.sh` は未作成~~ → 作成済み。`./install.sh` / `./install.sh uninstall`。
+- ~~Codex の内部エンドポイントを使うか~~ → 採用。`chatgpt.com/backend-api/codex/usage`。
+  「ネットワーク不要という利点を失う」という当初の懸念は成立しなかった
+  （Claude 側が既にネットワーク必須なので、スクリプト全体としては何も失わない）。
+  JSONL はフォールバックとして残してあるので、壊れても止まらない。
+- ~~launchd から `security` で keychain を読めるか~~ → 2026-07-26 に確認。
+  launchd 実行（`local.ai-usage`）で `claude=ok`、終了コード 0。**読める。**
+  長期運用で再ロックされた場合の挙動は引き続き様子見。
+- Phase 3 の転送経路。第一候補は Tailscale + Mac 上の小さな HTTP サーバー。
+
+## 参考
+
+- Claude Code statusline の `rate_limits` 仕様（公式）: https://code.claude.com/docs/en/statusline
+- 元の構想メモ: `docs/2026-07-26_claude-codex-usage-widget-draft.md`（未作成。
+  このパスは当初の想定で、実物は存在しない）
