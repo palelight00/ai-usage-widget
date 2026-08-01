@@ -35,6 +35,36 @@ Scriptable ウィジェットで見る。表示は端末の言語に追従する
 > usage percentages, reset times and status leave the Mac. Read `ai_usage_fetch.py` before
 > running it. No warranty. See [READ_FIRST.md](READ_FIRST.md) before using or redistributing.
 
+## 動作環境
+
+**収集側は macOS 専用、表示側は iOS。**Windows / Linux では動きません。
+
+| | 必要なもの |
+|---|---|
+| 収集 | **macOS**（常時起動・スリープしない設定を推奨）、Python 3 |
+| | Claude Code CLI（任意・推奨。トークン失効時の自動復旧に使う） |
+| 表示 | **iPhone / iPad** + [Scriptable](https://scriptable.app/) |
+| 受け渡し | 共有リンクを作れる場所（Dropbox / Google ドライブ / OneDrive / 自前の HTTP サーバー） |
+
+**動作確認したプランは Claude Max / Codex team。** 他プランは未検証で、`limits[]` の構成や
+Codex の `secondary_window` が異なる可能性がある。
+
+### Windows / Linux について
+
+現状は動かない。塞がっているのは次の 3 点で、いずれも小さい。
+
+1. **Claude の認証情報** — `security`（macOS keychain）を使っている。
+   Windows / Linux の Claude Code は `~/.claude/.credentials.json` に置くはずで、
+   **コードは既にそちらも見に行く**ため、そのまま動く可能性はある（未検証）
+2. **定期実行** — launchd。Windows ならタスク スケジューラ、Linux なら systemd/cron
+3. **iCloud への出力** — 該当パスが存在しない。出力先の存在確認が要る
+
+Codex 側（`~/.codex/auth.json`、rollout JSONL）は OS に依存しない。
+**iPhone 側の `AIUsage.js` は HTTPS で JSON を取るだけなので、収集側の OS を問わない。**
+
+対応の Pull Request や動作報告は歓迎する。ただし作者は Windows / Linux で検証できないため、
+実機で確認できる方の協力が要る。
+
 ```
 Mac（常時起動）
 ├─ ai_usage_fetch.py … Claude / Codex とも本命は OAuth・内部 API。

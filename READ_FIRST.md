@@ -35,11 +35,14 @@ keychain のアクセストークンは約 8 時間で切れます。これを�
 `claude -p ok` を 1 回走らせて公式に更新させています（1 時間に 1 回まで）。
 ごく少量ですが使用枠を消費します。不要なら `nudge_claude_cli()` の呼び出しを外してください。
 
-### 4. 作者の環境に合わせた作りです
+### 4. macOS 専用です（表示は iOS）
 
-- UI の文字列は**すべて日本語**です
+- **収集側は macOS 専用。**Windows / Linux では動きません
+  （Claude の認証情報を macOS keychain から読む、launchd で定期実行する、の 2 点が理由）
+- 表示側は **iPhone / iPad の Scriptable**。こちらは HTTPS で JSON を取るだけです
 - Claude は Max、Codex は team プランで確認しています。他プランでの動作は未確認です
 - macOS 26 系 / Apple Silicon / Python 3 で動かしています
+- ウィジェットの表示は端末の言語に追従します（日本語 / 英語）
 
 ## 使い方
 
