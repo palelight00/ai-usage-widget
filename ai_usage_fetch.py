@@ -71,7 +71,27 @@ CODEX_TAIL_BYTES = 3_000_000  # 巨大 JSONL は末尾だけ読む
 DEFAULT_PUBLIC_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "public", "ai-usage.json"
 )
-PUBLIC_PATH = os.path.expanduser(os.environ.get("AI_USAGE_PUBLIC_PATH") or DEFAULT_PUBLIC_PATH)
+# install.sh が控えた設定。環境変数を付けずに手で動かしても同じ場所に書けるようにする
+# （別々の場所に書くと、古いほうの共有リンクを掴んだまま気づけない）。
+PUBLIC_PATH_FILE = os.path.expanduser("~/.ai-usage/public_path")
+
+
+def configured_public_path() -> str:
+    """--public > 環境変数 > install.sh が控えた設定 > 既定 の順で決める。"""
+    from_env = os.environ.get("AI_USAGE_PUBLIC_PATH")
+    if from_env:
+        return os.path.expanduser(from_env)
+    try:
+        with open(PUBLIC_PATH_FILE, encoding="utf-8") as fh:
+            saved = fh.read().strip()
+        if saved:
+            return os.path.expanduser(saved)
+    except OSError:
+        pass
+    return DEFAULT_PUBLIC_PATH
+
+
+PUBLIC_PATH = configured_public_path()
 
 STATE_DIR = os.path.expanduser("~/.ai-usage")
 OUTPUT_PATH = os.path.expanduser(

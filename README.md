@@ -142,13 +142,21 @@ JSON 以外が返ったときは iCloud → 控え に落ちるだけなので�
 
 ### 出力先の変更
 
-既定はリポジトリ内の `public/ai-usage.json`（`.gitignore` 済み）。
-同期フォルダを直接指したい場合は環境変数か引数で差し替える。
+出力先は次の順で決まる。
+
+1. `--public <path>` 引数
+2. 環境変数 `AI_USAGE_PUBLIC_PATH`
+3. `~/.ai-usage/public_path`（`install.sh` が控える）
+4. 既定 = リポジトリ内の `public/ai-usage.json`（`.gitignore` 済み）
+
+install 時に渡しておけば 3 に控えられるので、**手で動かしても同じ場所に書く**。
 
 ```bash
-AI_USAGE_PUBLIC_PATH="$HOME/Google Drive/My Drive/ai-usage/ai-usage.json" python3 ai_usage_fetch.py
-python3 ai_usage_fetch.py --public "$HOME/Dropbox/ai-usage/ai-usage.json"
+AI_USAGE_PUBLIC_PATH="$HOME/Dropbox/ai-usage/ai-usage.json" ./install.sh
 ```
+
+これをやらないと、launchd は指定先に、手動実行はリポジトリ内 `public/` に書く、
+という**二重出力**になる。古いほうの共有リンクを掴んだまま気づけないので注意。
 
 ### セットアップ
 

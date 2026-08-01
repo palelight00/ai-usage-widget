@@ -70,6 +70,13 @@ with open(plist_path, "wb") as fh:
     plistlib.dump(plist, fh)
 PY
 
+# 手動実行でも同じ場所に書けるよう、設定を控えておく
+if [[ -n "$PUBLIC_PATH" ]]; then
+  printf '%s\n' "$PUBLIC_PATH" > "$STATE_DIR/public_path"
+else
+  rm -f "$STATE_DIR/public_path"
+fi
+
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
 launchctl kickstart -k "gui/$(id -u)/$LABEL"
 
