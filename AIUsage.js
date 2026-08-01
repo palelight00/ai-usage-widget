@@ -94,6 +94,11 @@ const STRINGS = {
     window: "使用枠",
     setupTitle: "共有リンクの登録",
     setupTitleEdit: "共有リンクの変更",
+    setupBodyFailed:
+      "登録されている共有リンクから取得できませんでした。\n" +
+      "リンクが「リンクを知っている全員」になっているか、\n" +
+      "JSON の実体が返る URL かを確認してください。\n" +
+      "空にして保存すると登録を消し、iCloud 経由に戻します。",
     keep: "変更しない",
     setupBody:
       "ai-usage.json の共有リンクを貼り付けてください。\n" +
@@ -149,6 +154,11 @@ const STRINGS = {
     window: "Limit",
     setupTitle: "Register share link",
     setupTitleEdit: "Change share link",
+    setupBodyFailed:
+      "Could not fetch from the registered share link.\n" +
+      "Check that it is shared with \"anyone with the link\"\n" +
+      "and that the URL returns the raw JSON.\n" +
+      "Save an empty field to clear it and fall back to iCloud.",
     keep: "Keep current",
     setupBody:
       "Paste the share link to ai-usage.json.\n" +
@@ -775,7 +785,7 @@ async function promptForRemoteUrl() {
   const current = remoteUrl() || "";
   const alert = new Alert();
   alert.title = current ? T.setupTitleEdit : T.setupTitle;
-  alert.message = T.setupBody;
+  alert.message = current ? T.setupBodyFailed : T.setupBody;
   // 現在の値を入れておく。空にして保存すれば登録を消せる
   alert.addTextField("https://...", current);
   alert.addAction(T.save);
@@ -814,10 +824,22 @@ async function promptForRemoteUrl() {
 
 const family = config.runsInWidget ? config.widgetFamily || "medium" : "medium";
 
-// アプリ内で実行したときは、毎回リンクを確認・変更できるようにする。
-// （ウィジェットやショートカットからは画面を出せないので絶対に呼ばない）
+// 入力を求めるのは「困っているとき」だけにする。
+//   - まだ登録されていない
+//   - 登録済みだが取得できない（リンク切れ・共有設定の誤り）
+//   - ショートカットから "setup" を渡して明示的に呼んだ
+// 問題なく動いているときに毎回聞くと、ただ邪魔になる。
+// （ウィジェットからは画面を出せないので絶対に呼ばない）
 if (config.runsInApp) {
-  await promptForRemoteUrl();
+  const asked = String((typeof args !== "undefined" && args.shortcutParameter) || "").trim();
+  if (asked === "setup") {
+    await promptForRemoteUrl();
+  } else if (!remoteUrl()) {
+    await promptForRemoteUrl();
+  } else if (!(await readFromRemote())) {
+    // 登録されているのに取れない。直せるように編集させる
+    await promptForRemoteUrl();
+  }
 }
 
 // 想定外の例外で Scriptable の赤いエラー画面になるより、

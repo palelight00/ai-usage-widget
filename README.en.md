@@ -100,8 +100,14 @@ Then run `AIUsage` once **inside the Scriptable app**. It asks for the share lin
 (`ai-usage-url`), never written into the script.
 
 > **Do not hard-code the link into `AIUsage.js`.** That file is meant to be shared; a
-> hard-coded link would travel with it. To change the link later, just run `AIUsage` in the
-> app again — the current value is pre-filled and editable. Save an empty field to clear it.
+> hard-coded link would travel with it.
+
+It only asks when something needs attention — when no link is stored, or when the stored one
+cannot be fetched. Running it in the app otherwise just shows the preview.
+
+To change a link that already works, run `AIUsage` from Shortcuts with `setup` as the
+parameter. The current value is pre-filled; save an empty field to clear it and fall back
+to iCloud.
 
 ## Widget layout
 
