@@ -73,7 +73,7 @@ PY
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
 launchctl kickstart -k "gui/$(id -u)/$LABEL"
 
-echo "登録しました: $LABEL（${INTERVAL} 秒ごと）"
+echo "登録しました: ${LABEL}（${INTERVAL} 秒ごと）"
 echo "  plist : $PLIST"
 echo "  script: $SCRIPT"
 [ -n "$PUBLIC_PATH" ] && echo "  public: $PUBLIC_PATH"
