@@ -28,6 +28,10 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 
+# 壊れる前提のツールなので、利用者が「どの版か」を言えるようにしておく。
+# AIUsage.js の VERSION と揃えること。
+__version__ = "0.9.0"
+
 # --- 実物を見て決めた定数。壊れたら --raw で確認してここを直す -----------------
 
 KEYCHAIN_SERVICE = "Claude Code-credentials"
@@ -686,6 +690,7 @@ def dump_raw() -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--version", action="version", version=f"ai-usage {__version__}")
     parser.add_argument("--raw", action="store_true", help="生レスポンス / 生イベントを表示して終了")
     parser.add_argument("--stdout", action="store_true", help="ファイルに書かず結果 JSON を表示")
     parser.add_argument("--out", default=OUTPUT_PATH, help="出力先 JSON のパス")
@@ -764,6 +769,7 @@ def main() -> int:
 
     payload = {
         "schema": 1,
+        "app_version": __version__,
         "generated_at": now_iso(),
         "claude": claude,
         "codex": codex,

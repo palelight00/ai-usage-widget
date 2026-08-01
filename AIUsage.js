@@ -13,6 +13,9 @@
 //   medium … 2 列（Claude | Codex）。縦が足りないので横幅を使う
 //   large  … 1 列。全枠 + リセット時刻 + 追加クレジット
 
+// ai_usage_fetch.py の __version__ と揃えること
+const VERSION = "0.9.0";
+
 const FILE_NAME = "ai-usage.json";
 const CACHE_FILE_NAME = "ai-usage-cache.json"; // 端末内の控え（iCloud が読めないとき用）
 // Scriptable アプリ内で実行したときにプレビューを出すか。
@@ -663,6 +666,9 @@ function buildWidget(payload, family) {
     msg.font = Font.systemFont(10);
     msg.textColor = COLOR.danger;
     msg.lineLimit = 3;
+    const ver = widget.addText(`v${VERSION}`);
+    ver.font = Font.systemFont(8);
+    ver.textColor = COLOR.dim;
     return widget;
   }
 

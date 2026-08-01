@@ -25,6 +25,14 @@ iPhone
 └─ AIUsage.js（Scriptable ウィジェット）が JSON を読んで描画
 ```
 
+## バージョン
+
+`0.9.0`。変更履歴は `CHANGELOG.md`。
+
+作者の環境では実運用で安定しているが、**他人の環境での導入実績がまだ無い**ため 0.9 とする。
+別の環境で導入が確認できたら 1.0.0 にする。不具合の報告時は、
+`python3 ai_usage_fetch.py --version` の出力か、出力 JSON の `app_version` を添えてほしい。
+
 ## セットアップ
 
 ```bash
