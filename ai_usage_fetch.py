@@ -362,6 +362,13 @@ def parse_claude(raw: dict, cred: dict | None) -> dict:
     extra = raw.get("extra_usage")
     if isinstance(extra, dict) and extra.get("is_enabled"):
         percent = extra.get("utilization")
+        used = extra.get("used_credits")
+        limit = extra.get("monthly_limit")
+        # 使用量が 0 のとき utilization は null で返る（月初に実測）。
+        # 0% も表示すべき情報なので、使用量と上限から自分で出す。
+        if not isinstance(percent, (int, float)) and isinstance(used, (int, float)):
+            if isinstance(limit, (int, float)) and limit > 0:
+                percent = used / limit * 100
         result["extra_usage"] = {
             "percent": float(percent) if isinstance(percent, (int, float)) else None,
             "used": extra.get("used_credits"),
@@ -449,9 +456,14 @@ def parse_codex_api(raw: dict) -> dict:
 
     credits = raw.get("credits")
     if isinstance(credits, dict) and credits.get("has_credits"):
+        # 実物を見たことがない（has_credits は常に false だった）。
+        # balance の単位が不明なので、判断材料になりそうな項目もまとめて残す。
         result["credits"] = {
             "balance": credits.get("balance"),
             "unlimited": bool(credits.get("unlimited")),
+            "overage_limit_reached": bool(credits.get("overage_limit_reached")),
+            "approx_local_messages": credits.get("approx_local_messages"),
+            "approx_cloud_messages": credits.get("approx_cloud_messages"),
         }
     return result
 

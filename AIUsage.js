@@ -83,6 +83,8 @@ const STRINGS = {
     creditsUnlimited: "クレジット 無制限",
     creditsBalance: (b) => `残高 ${b}`,
     creditsSome: "クレジットあり",
+    creditsMessages: (n) => `残り約 ${n} メッセージ`,
+    overageReached: "・上限到達",
     codexOld: (h) => `Codex の値は ${h} 時間前の記録`,
     hours: (n) => `${n}時間`,
     days: (n) => `${n}日`,
@@ -136,6 +138,8 @@ const STRINGS = {
     creditsUnlimited: "Credits: unlimited",
     creditsBalance: (b) => `Balance ${b}`,
     creditsSome: "Credits available",
+    creditsMessages: (n) => `~${n} messages left`,
+    overageReached: " · limit reached",
     codexOld: (h) => `Codex data is ${h}h old`,
     hours: (n) => (n === 1 ? "1 hour" : `${n} hours`),
     days: (n) => (n === 1 ? "1 day" : `${n} days`),
@@ -720,19 +724,33 @@ function buildWidget(payload, family) {
   if (family === "large") {
     // クレジットは Claude と Codex の両方にありうるので、必ずサービス名を添える
     const extra = payload.claude && payload.claude.extra_usage;
-    if (extra && typeof extra.percent === "number") {
+    if (extra && (typeof extra.percent === "number" || typeof extra.used === "number")) {
       const used = moneyText(extra.used, extra.decimal_places, extra.currency);
       const limit = moneyText(extra.limit, extra.decimal_places, extra.currency);
-      const parts = [T.extraCredits(Math.round(extra.percent))];
+      // 古い JSON では未使用時に percent が null になる。金額から出せるなら出す
+      let pct = extra.percent;
+      if (typeof pct !== "number" && typeof extra.used === "number" && extra.limit > 0) {
+        pct = (extra.used / extra.limit) * 100;
+      }
+      const parts = [T.extraCredits(Math.round(pct || 0))];
       if (used && limit) parts.push(`${used} / ${limit}`);
       addCreditLine(widget, "Claude", COLOR.claude, parts.join("  ・  "));
     }
 
     const credits = payload.codex && payload.codex.credits;
     if (credits) {
-      const balance =
-        typeof credits.balance === "number" ? T.creditsBalance(credits.balance) : null;
-      const text = credits.unlimited ? T.creditsUnlimited : balance || T.creditsSome;
+      // 実物を見ていないので、取れたものから順に選ぶ
+      let text;
+      if (credits.unlimited) {
+        text = T.creditsUnlimited;
+      } else if (typeof credits.approx_local_messages === "number") {
+        text = T.creditsMessages(credits.approx_local_messages);
+      } else if (typeof credits.balance === "number") {
+        text = T.creditsBalance(credits.balance);
+      } else {
+        text = T.creditsSome;
+      }
+      if (credits.overage_limit_reached) text += T.overageReached;
       addCreditLine(widget, "Codex", COLOR.codex, text);
     }
 
