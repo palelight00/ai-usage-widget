@@ -24,9 +24,10 @@ The widget follows the device language — Japanese on Japanese devices, English
 > `~/.codex/auth.json`. **It only reads them; nothing leaves your Mac.** The JSON it writes
 > contains usage percentages, reset times and status — nothing else. Even so, this is a
 > script that touches your credentials: **read `ai_usage_fetch.py` yourself before running
-> it.** It is about 700 lines and deliberately plain.
+> it.** It is about 800 lines and deliberately plain.
 >
 > Built by one person for their own use. **No warranty.**
+> See [READ_FIRST.md](READ_FIRST.md) for the full version of this notice (Japanese).
 
 ## Requirements
 
@@ -55,15 +56,15 @@ iPhone
 └─ AIUsage.js (Scriptable widget) fetches and draws it
 ```
 
-The widget tries, in order:
+The widget tries, in order, and takes whichever has the newest `generated_at`:
 
 1. **Share link over HTTPS** — works anywhere, including cellular
 2. **iCloud file**
 3. **On-device cache**
 
-It takes whichever has the newest `generated_at`. This ordering matters: **a widget
-extension on iOS cannot trigger an on-demand iCloud download**, so relying on iCloud alone
-leaves the widget showing stale data. That is why the share link is the primary path.
+This ordering matters: **a widget extension on iOS cannot trigger an on-demand iCloud
+download**, so relying on iCloud alone leaves the widget showing stale data. That is why
+the share link is the primary path.
 
 ## Setup
 
@@ -74,17 +75,30 @@ AI_USAGE_PUBLIC_PATH="$HOME/Dropbox/ai-usage/ai-usage.json" ./install.sh
 ```
 
 This registers a launchd job (`local.ai-usage`) that runs every 30 minutes and points
-directly at the script in this repository. `~/.ai-usage/` holds the cache and logs.
-To remove it: `./install.sh uninstall`.
+directly at the script in this repository — nothing is copied. `~/.ai-usage/` holds the
+cache and logs. To remove it: `./install.sh uninstall`.
 
 Point `AI_USAGE_PUBLIC_PATH` at a folder that syncs to a cloud service. Passing it at
-install time also records it, so running the script by hand writes to the same place.
+install time also records it, so **running the script by hand writes to the same place**
+(without it, launchd and manual runs write to different files).
 
 ### 2. Share link
 
-Create a link to that `ai-usage.json` with **"anyone with the link"** access.
-Dropbox, Google Drive and OneDrive links are all converted to a direct-download URL
-automatically. A URL from your own HTTP server or GitHub raw works as-is.
+Create a link to that `ai-usage.json` with **"anyone with the link"** access. Paste the
+link exactly as the service gives it to you — converting it to a direct download is handled
+for you.
+
+| Service | Link you paste | Converted to |
+|---|---|---|
+| Dropbox | `.../ai-usage.json?rlkey=…&dl=0` | `dl=1` |
+| Google Drive | `.../file/d/<ID>/view?usp=sharing` | `drive.usercontent.google.com/download?id=<ID>` |
+| OneDrive / SharePoint | `https://1drv.ms/...` | `download=1` appended |
+| Your own HTTP server | as-is | no conversion |
+| GitHub raw / Gist raw | as-is | no conversion |
+
+Any other service works too, as long as the URL returns the raw JSON. Links that require
+authentication will not work. If something other than JSON comes back the widget just falls
+through to iCloud and the cache, so trying costs nothing.
 
 > **The share link is readable by anyone who has the URL.** The contents are only usage
 > percentages, reset times and status — no credentials — but understand that this is the
@@ -102,8 +116,8 @@ Then run `AIUsage` once **inside the Scriptable app**. It asks for the share lin
 > **Do not hard-code the link into `AIUsage.js`.** That file is meant to be shared; a
 > hard-coded link would travel with it.
 
-It only asks when something needs attention — when no link is stored, or when the stored one
-cannot be fetched. Running it in the app otherwise just shows the preview.
+It only asks when something needs attention — when no link is stored, or when the stored
+one cannot be fetched. Running it in the app otherwise just shows the preview.
 
 To change a link that already works, run `AIUsage` from Shortcuts with `setup` as the
 parameter. The current value is pre-filled; save an empty field to clear it and fall back
@@ -119,7 +133,7 @@ Layout differs by size, because small and medium are only 158pt tall:
 
 | Size | Layout | Contents |
 |---|---|---|
-| small | 1 column | Claude 2 windows + Codex. `weekly_scoped` omitted (it is a subset of weekly) |
+| small | 1 column | Claude 2 windows + Codex (`weekly_scoped` omitted — it is a subset of weekly) |
 | medium | **2 columns** (Claude \| Codex) | All windows, no reset times |
 | large | 1 column | All windows + reset times + credits |
 
@@ -143,8 +157,9 @@ The log line tells you a lot:
 - `claude=login_required` — the keychain token expired. **Only the Claude Code CLI refreshes
   it**; the desktop app and its scheduled routines do not. The script runs `claude -p` once
   (at most hourly) to let the official tool refresh it.
-- `claude=empty` — the request succeeded but no windows could be read. A key name changed.
-  Look at `--raw`.
+- `codex=login_required` — check `~/.codex/auth.json`.
+- `claude=empty` / `codex=empty` — the request succeeded but no windows could be read. A key
+  name changed. Look at `--raw`.
 - `icloud=skipped` — the contents did not change, so the iCloud file was left alone. This is
   deliberate: rewriting it every 30 minutes prevents devices from ever catching up.
 
@@ -178,10 +193,12 @@ this needs someone who can.
 
 ## More detail
 
-This file covers installing and running the tool. The Japanese [README.md](README.md) also
-documents the exact response keys, the output format, and the reasoning behind the design.
-[CLAUDE.md](CLAUDE.md) is a working log of what was tried, what failed, and what was decided
-not to revisit — useful before changing anything. Both are Japanese only.
+- [docs/internals.en.md](docs/internals.en.md) — the exact response keys observed, the
+  output format, widget implementation decisions and the iCloud pitfalls.
+  **Read this when it breaks.**
+- [CLAUDE.md](CLAUDE.md) — a working log of what was tried, what failed, and what was
+  decided not to revisit. Japanese only.
+- [READ_FIRST.md](READ_FIRST.md) — the notice at the top of this page, in full. Japanese only.
 
 ## License
 

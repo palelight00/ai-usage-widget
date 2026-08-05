@@ -7,7 +7,8 @@
 ## これは何か
 
 Claude と Codex のサブスク使用枠（5時間枠・週次枠）を、Mac 側で収集して JSON に書き出し、
-iPhone の Scriptable ウィジェットに表示する。実装詳細と手順は `README.md` にある。
+iPhone の Scriptable ウィジェットに表示する。手順は `README.md`、実装詳細は
+`docs/internals.md` にある。
 
 ```
 Mac（常時起動）
@@ -59,7 +60,7 @@ JSONL を見てから書き直したのが現在の `ai_usage_fetch.py`。確定
   現行 team プランは secondary が `null` で週次のみなので、
   **`primary` = 5 時間枠と決め打ちしない**（枠の長さで判定する）。
 
-キー名の詳細と出力フォーマットは `README.md` に写してある。
+キー名の詳細と出力フォーマットは `docs/internals.md` に写してある。
 
 ### 壊れたときにやること
 
