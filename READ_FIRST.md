@@ -1,10 +1,12 @@
 # はじめに読んでください
 
-Claude と Codex のサブスク使用枠を Mac で集めて JSON に書き出し、
-iPhone の Scriptable ウィジェットに表示するツールです。
+Claude と Codex のサブスク使用枠を Mac で収集して JSON に書き出し、iPhone の
+Scriptable ウィジェットに表示するツールです。
 
-**個人が自分用に作ったもの**をそのまま渡しています。動作の保証はありません。
-使う前に、下の「重要な注意」に必ず目を通してください。
+**個人が自分用に作ったもの**を、そのままの形で公開しています。動作は保証できません。
+お使いになる前に、下の「重要な注意」に必ず目を通してください。
+
+セットアップの手順は [README.md](README.md) にあります。
 
 ## 重要な注意
 
@@ -12,98 +14,85 @@ iPhone の Scriptable ウィジェットに表示するツールです。
 
 | | エンドポイント | 位置づけ |
 |---|---|---|
-| Claude | `api.anthropic.com/api/oauth/usage` | Claude Code が内部で使う非公開 OAuth |
+| Claude | `api.anthropic.com/api/oauth/usage` | Claude Code が内部で使っている非公開の OAuth API |
 | Codex | `chatgpt.com/backend-api/codex/usage` | ChatGPT の内部バックエンド API |
 
 いずれも公式に文書化されたものではありません。**予告なく変わって動かなくなります。**
-自分のアカウントで自分の使用量を読むだけの用途を想定しています。
-各サービスの利用規約は自分で確認してください。
+ご自身のアカウントで、ご自身の使用量を読み取るだけの用途を想定しています。
+各サービスの利用規約はご自身で確認してください。
 
 ### 2. ローカルの認証情報を読みます
 
 - Claude: macOS keychain の `Claude Code-credentials`
 - Codex: `~/.codex/auth.json`
 
-**読み取るだけで、Mac の外には一切出しません。**書き出す JSON に含まれるのは
-使用率・リセット時刻・状態だけです。とはいえ認証情報に触れるスクリプトなので、
-**実行前に `ai_usage_fetch.py` を自分の目で読んでください。**800 行ほどで読めます。
+**読み取るだけで、Mac の外には一切送信しません。**書き出す JSON に含まれるのは
+使用率・リセット時刻・状態だけです。とはいえ認証情報に触れるスクリプトですので、
+**実行する前に `ai_usage_fetch.py` をご自身の目で確認してください。**800 行ほどで、
+読みやすさを優先して書いてあります。
 
-### 3. 401 のとき `claude -p` を 1 回実行します
+### 3. トークンが失効したとき `claude -p` を 1 回実行します
 
-keychain のアクセストークンは約 8 時間で切れます。これを更新するのは Claude Code の
-**CLI だけ**で、デスクトップアプリもそのルーティンも更新しません。そのため失効時のみ
-`claude -p ok` を 1 回走らせて公式に更新させています（1 時間に 1 回まで）。
-ごく少量ですが使用枠を消費します。不要なら `nudge_claude_cli()` の呼び出しを外してください。
+keychain のアクセストークンは約 8 時間で失効します。これを更新できるのは Claude Code の
+**CLI だけ**で、デスクトップアプリやそのスケジュール実行では更新されません。そのため
+失効を検知したときだけ `claude -p ok` を 1 回実行し、公式のツールに更新させています
+（最大でも 1 時間に 1 回までです）。
 
-### 4. macOS 専用です（表示は iOS）
+このとき、ごくわずかですが使用枠を消費します。不要であれば `nudge_claude_cli()` の
+呼び出しを外してください。
 
-- **収集側は macOS 専用。**Windows / Linux では動きません
-  （Claude の認証情報を macOS keychain から読む、launchd で定期実行する、の 2 点が理由）
-- 表示側は **iPhone / iPad の Scriptable**。こちらは HTTPS で JSON を取るだけです
-- Claude は Max、Codex は team プランで確認しています。他プランでの動作は未確認です
-- macOS 26 系 / Apple Silicon / Python 3 で動かしています
-- ウィジェットの表示は端末の言語に追従します（日本語 / 英語）
+### 4. macOS 専用です（表示側は iOS）
 
-## 使い方
+- **収集側は macOS 専用です。**Windows / Linux では動きません。Claude の認証情報を
+  macOS keychain から読み取っていることと、launchd で定期実行していることが主な理由です
+  （詳しくは [README.md](README.md#windows--linux-について) をご覧ください）
+- 表示側は **iPhone / iPad の Scriptable** です。こちらは HTTPS で JSON を取得する
+  だけですので、収集側の OS には依存しません
+- 動作を確認したプランは Claude Max と Codex team だけです。他のプランでの動作は
+  確認できていません
+- macOS 26 系 / Apple Silicon / Python 3 の環境で動かしています
+- ウィジェットの表示言語は端末の設定に従います（日本語 / 英語）
 
-```bash
-./install.sh          # launchd に 30 分間隔で登録
-./install.sh uninstall # 解除
-```
-
-`AIUsage.js` を iCloud Drive の `Scriptable/` に置き、ホーム画面に Scriptable
-ウィジェットを追加して Script に `AIUsage` を指定します。
-
-動作確認は次の 2 つです。
+## 動作を確認するコマンド
 
 ```bash
-python3 ai_usage_fetch.py --raw     # 生レスポンスを見る（構造が変わったとき用）
-python3 ai_usage_fetch.py --stdout  # 書き出さずに結果 JSON を見る
+python3 ai_usage_fetch.py --raw     # 加工前のレスポンスをそのまま表示します
+python3 ai_usage_fetch.py --stdout  # ファイルに書き出さず、結果の JSON だけ表示します
 ```
 
-**`--raw` の出力には Codex 側の `email` / `user_id` / `account_id` が含まれます。**
-issue や SNS に貼るときは消してください。
+**`--raw` の出力には、Codex 側の `email` / `user_id` / `account_id` が含まれます。**
+issue や SNS に貼り付けるときは、必ず削除してください。
 
-## iPhone のウィジェットは Dropbox 共有リンクから取ります
+## 共有リンクについて
 
-**iCloud 経由は使えません。**ウィジェット拡張からは iCloud のオンデマンド・ダウンロードを
-起こせず、ファイルが端末に降りていないと読めません。ショートカット経由なら読めますが、
-それでも中身が数時間前ということがありました（実測）。
+ウィジェットは、次の 3 つを順に試して JSON を取得します。
 
-そのため取得経路は次の順です。**① が本命**で、これで解決しています。
+1. **共有リンク（HTTPS）** — Dropbox / Google ドライブ / OneDrive / 自前の HTTP サーバー
+2. iCloud 上のファイル
+3. 端末内に保存してある控え（`ai-usage-cache.json`）
 
-1. **Dropbox 共有リンク（HTTPS）** — 外出先・セルラーでも動く
-2. iCloud ファイル
-3. 端末内の控え（`ai-usage-cache.json`）
+**共有リンクを登録することを強くおすすめします。**iOS のウィジェットからは、iCloud に
+あるだけで端末にダウンロードされていないファイルを読み込ませることができません。
+ショートカット経由であれば読み込めますが、それでも中身が数時間前のものだったことが
+あります（実測しました）。共有リンクを使えば、この問題は起きません。
 
-### セットアップ
+登録の手順は [README.md](README.md) にあります。以下の 2 点だけ、先にお伝えしておきます。
 
-1. Mac 側は `public/ai-usage.json` にも書き出します（`.gitignore` 済み）。
-   このファイルを **Dropbox / Google ドライブ / OneDrive など同期されるフォルダ**に置き、
-   「リンクを知っている全員」の共有リンクを作ります。
-   出力先は環境変数か引数で変えられます。
-   ```bash
-   AI_USAGE_PUBLIC_PATH="$HOME/Google Drive/My Drive/ai-usage/ai-usage.json" python3 ai_usage_fetch.py
-   python3 ai_usage_fetch.py --public "$HOME/Dropbox/ai-usage/ai-usage.json"
-   ```
-   Dropbox・Google ドライブ・OneDrive の共有リンクは、貼るだけで直リンクに変換されます。
-   自前の HTTP サーバーや GitHub raw の URL もそのまま使えます。
-2. iPhone の Scriptable で `AIUsage` を 1 回実行すると入力欄が出るので、リンクを貼ります。
-   保存すると**その場で 1 回取得して成否を知らせます**
-3. リンクは **Keychain（`ai-usage-url`）** に保存され、スクリプトには書き込まれません
+**リンクをスクリプトに直接書き込まないでください。**`AIUsage.js` は他の人に渡すことが
+あるため、書き込んでしまうとリンクも一緒に渡ることになります。リンクは Scriptable の
+Keychain（`ai-usage-url`）に保存されます。すでに動いているリンクを変更したいときは、
+ショートカットアプリからパラメータに `setup` を渡して `AIUsage` を実行してください。
 
-**リンクをスクリプトに直書きしないでください。**`AIUsage.js` は配布されるので、
-直書きすると配布先にリンクが渡ります。変更したいときは、Scriptable アプリ内で
-`AIUsage` を実行すれば現在のリンクを編集できます（空にして保存すると登録を消せます）。
-
-**共有リンクは URL を知っていれば誰でも読めます。**中身は使用率・リセット時刻・状態のみで
-認証情報は含みませんが、公開範囲としてはそういう性質だと理解して使ってください。
-Dropbox を使いたくない場合は、LAN 内に小さな HTTP サーバーを立てて同じ JSON を配る形でも
-動きます（この配布物にサーバーは含まれていません）。
+**共有リンクは、URL を知っている人なら誰でも閲覧できます。**中身は使用率・リセット
+時刻・状態だけで認証情報は含まれませんが、その範囲の情報は公開されることになります。
+ご了承のうえでお使いください。Dropbox などを使いたくない場合は、LAN 内に小さな HTTP
+サーバーを立てて同じ JSON を配る形でも動きます（このリポジトリにサーバーは含まれて
+いません）。
 
 ## 詳しい仕様
 
-`docs/internals.md` に、実際に確認したキー名・出力フォーマット・ウィジェットのレイアウト方針・
-ハマりどころを書いてあります。壊れたときはまずそこを読んでください。
-セットアップ手順は `README.md`、設計上の決定事項と再検討しないと決めた項目は
-`CLAUDE.md` にあります。
+- [README.md](README.md) — セットアップの手順と、うまくいかないときの調べ方
+- [docs/internals.md](docs/internals.md) — 実際に確認したレスポンスのキー名、出力
+  フォーマット、ウィジェットの実装上の判断、iCloud まわりの注意点。
+  **動かなくなったときは、まずここを読んでください**
+- [CLAUDE.md](CLAUDE.md) — 設計上の決定事項と、再検討しないと決めた項目の記録
