@@ -78,9 +78,15 @@ This registers a launchd job (`local.ai-usage`) that runs every 30 minutes and p
 directly at the script in this repository — nothing is copied. `~/.ai-usage/` holds the
 cache and logs. To remove it: `./install.sh uninstall`.
 
-Point `AI_USAGE_PUBLIC_PATH` at a folder that syncs to a cloud service. Passing it at
-install time also records it, so **running the script by hand writes to the same place**
-(without it, launchd and manual runs write to different files).
+Point `AI_USAGE_PUBLIC_PATH` at a path inside a folder that syncs to a cloud service. The
+value given at install time is embedded in the launchd job and also saved to
+`~/.ai-usage/public_path`, so **running `python3 ai_usage_fetch.py` by hand later writes to
+the same file.**
+
+Without it, the output path is `public/ai-usage.json` inside the repository. If you then
+set `AI_USAGE_PUBLIC_PATH` for manual runs only, launchd and manual runs write to different
+files and the share link keeps pointing at the stale one. **To change the output path,
+re-run `./install.sh` with the environment variable set.**
 
 ### 2. Share link
 
@@ -97,8 +103,8 @@ for you.
 | GitHub raw / Gist raw | as-is | no conversion |
 
 Any other service works too, as long as the URL returns the raw JSON. Links that require
-authentication will not work. If something other than JSON comes back the widget just falls
-through to iCloud and the cache, so trying costs nothing.
+authentication will not work. If a registered URL returns something other than JSON, the
+widget falls through to iCloud and then to the on-device cache.
 
 > **The share link is readable by anyone who has the URL.** The contents are only usage
 > percentages, reset times and status — no credentials — but understand that this is the
@@ -116,8 +122,8 @@ Then run `AIUsage` once **inside the Scriptable app**. It asks for the share lin
 > **Do not hard-code the link into `AIUsage.js`.** That file is meant to be shared; a
 > hard-coded link would travel with it.
 
-It only asks when something needs attention — when no link is stored, or when the stored
-one cannot be fetched. Running it in the app otherwise just shows the preview.
+The prompt appears only when no link is stored, or when the stored one could not be
+fetched. Otherwise, running it in the app just shows the preview.
 
 To change a link that already works, run `AIUsage` from Shortcuts with `setup` as the
 parameter. The current value is pre-filled; save an empty field to clear it and fall back
