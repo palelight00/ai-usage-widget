@@ -454,14 +454,22 @@ function untilText(iso) {
   return T.dayIn(Math.round(hours / 24));
 }
 
-// 引き継ぎ中の枠のうち、いちばん古い fetched_at。無ければ null。
+// その数値がいつのものか。JSONL に落ちた回は fetched_at が「読んだ時刻」で
+// 現在に近いため、数値そのものの古さを持つ observed_at を優先する。
+function valueTimestamp(data) {
+  return (data && (data.observed_at || data.fetched_at)) || null;
+}
+
+// 引き継ぎ中の枠のうち、いちばん古い時刻。無ければ null。
 function stalestFetchedAt(payload) {
   let oldest = null;
   for (const data of [payload.claude, payload.codex]) {
-    if (!data || data.stale !== true || !data.fetched_at) continue;
-    const t = Date.parse(data.fetched_at);
+    if (!data || data.stale !== true) continue;
+    const at = valueTimestamp(data);
+    if (!at) continue;
+    const t = Date.parse(at);
     if (isNaN(t)) continue;
-    if (oldest === null || t < Date.parse(oldest)) oldest = data.fetched_at;
+    if (oldest === null || t < Date.parse(oldest)) oldest = at;
   }
   return oldest;
 }
@@ -488,7 +496,7 @@ function buildGroups(payload, family) {
       accent: src.accent,
       rows: rows,
       stale: data.stale === true,
-      fetchedAt: data.fetched_at,
+      fetchedAt: valueTimestamp(data),
     });
   }
   return groups;

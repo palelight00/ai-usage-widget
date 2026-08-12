@@ -583,6 +583,9 @@ def carry_over(previous: dict, name: str, status: str) -> dict:
         stale["status"] = status
         stale["stale"] = True
         stale["last_attempt_at"] = now_iso()
+        # 前回が JSONL 経由だった場合の api_status が残ると、今回の失敗理由と
+        # 混ざる。理由は status が持っているので落とす。
+        stale.pop("api_status", None)
         return stale
     return {"status": status, "fetched_at": None, "last_attempt_at": now_iso(), "windows": []}
 
@@ -775,6 +778,10 @@ def main() -> int:
             else:
                 if fallback.get("windows"):
                     fallback["api_status"] = codex_status  # なぜ API を使わなかったか
+                    # JSONL は「実データだが現在値ではない」。ターンを回さないと
+                    # 1 件も増えないので、API が落ちたまま何日も同じ値を配りうる。
+                    # 表示側に古いと伝えないと、通常の明るさで描かれてしまう。
+                    fallback["stale"] = True
                 else:
                     fallback = carry_over(previous, "codex", "empty")
             codex = fallback
@@ -823,6 +830,13 @@ def main() -> int:
         extra.append("cli_refresh")
     if claude.get("token_expires_at"):
         extra.append(f"token_exp={claude['token_expires_at']}")
+    # JSONL に落ちた回も codex=ok のままなので、これが無いと事後に追えない
+    # （実際、API が 183 時間落ちていた間のログが全行 codex=ok だった）。
+    if codex.get("api_status"):
+        extra.append(f"codex_api={codex['api_status']}")
+        age = codex.get("observed_age_seconds")
+        if isinstance(age, (int, float)) and age >= 3600:
+            extra.append(f"codex_age={int(age // 3600)}h")
     extra.append(f"icloud={written}")
     extra.append(f"dropbox={public_state}")
     suffix = f" [{' '.join(extra)}]" if extra else ""
