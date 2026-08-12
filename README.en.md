@@ -29,6 +29,17 @@ The widget follows the device language — Japanese on Japanese devices, English
 > Built by one person for their own use. **No warranty.**
 > See [READ_FIRST.md](READ_FIRST.md) for the full version of this notice (Japanese).
 
+## What it looks like
+
+<p align="center">
+  <img src="docs/images/widget-large.jpg" width="330" alt="Large widget showing Claude at 39% of the 5-hour window, 46% weekly and 1% weekly (Fable), Codex at 40% weekly, each with time until reset, and extra credits along the bottom">
+  <img src="docs/images/widget-medium-small.jpg" width="330" alt="Medium widget with Claude and Codex side by side in two columns, and the small widget in a single column">
+</p>
+
+Large on the left; medium (top) and small (bottom) on the right.
+The screenshots are from a Japanese device — on other devices the widget is in English.
+See [Widget layout](#widget-layout) for what each size shows.
+
 ## Requirements
 
 **The collector is macOS only. The widget is iOS.** Windows and Linux are not supported —
@@ -142,6 +153,8 @@ Layout differs by size, because small and medium are only 158pt tall:
 | small | 1 column | Claude 2 windows + Codex (`weekly_scoped` omitted — it is a subset of weekly) |
 | medium | **2 columns** (Claude \| Codex) | All windows, no reset times |
 | large | 1 column | All windows + reset times + credits |
+
+See [What it looks like](#what-it-looks-like) for screenshots.
 
 ## Troubleshooting
 

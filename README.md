@@ -28,6 +28,16 @@ iOS の [Scriptable](https://scriptable.app/) ウィジェットがそれを読�
 > 個人が自分用に作成したものであり、**動作は保証できません。**
 > 詳細は [READ_FIRST.md](READ_FIRST.md) をご覧ください。
 
+## 表示例
+
+<p align="center">
+  <img src="docs/images/widget-large.jpg" width="330" alt="large サイズのウィジェット。Claude の 5 時間枠 39%、週次 46%、週次 (Fable) 1%、Codex の週次 40% と、それぞれのリセットまでの時間、下部に追加クレジットを表示している">
+  <img src="docs/images/widget-medium-small.jpg" width="330" alt="medium サイズのウィジェット（Claude と Codex を 2 列に並べたもの）と、small サイズのウィジェット（1 列）">
+</p>
+
+左が large。右は medium（上・2 列）と small（下）です。
+サイズごとの違いは[ウィジェットのレイアウト](#ウィジェットのレイアウト)にまとめています。
+
 ## 動作環境
 
 **収集側は macOS 専用、表示側は iOS 専用です。**Windows / Linux では動作しません
@@ -144,6 +154,8 @@ Claude と Codex はサービスごとにグループ分けし、見出し・区
 | small | 1 列 | Claude の 2 枠と Codex（`weekly_scoped` は週次枠の内訳のため省略） |
 | medium | **2 列**（Claude ｜ Codex） | すべての枠。リセット時刻は省略 |
 | large | 1 列 | すべての枠、リセット時刻、クレジット |
+
+実際の表示は[表示例](#表示例)にあります。
 
 ## うまくいかないとき
 
