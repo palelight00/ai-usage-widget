@@ -176,7 +176,23 @@ The log line tells you a lot:
 - `claude=login_required` — the keychain token expired. **Only the Claude Code CLI refreshes
   it**; the desktop app and its scheduled routines do not. The script runs `claude -p` once
   (at most hourly) to let the official tool refresh it.
-- `codex=login_required` — check `~/.codex/auth.json`.
+- `codex=login_required` — check `~/.codex/auth.json`. This only appears when **both**
+  the API and the JSONL fallback fail.
+- `codex_api=...` present — **the API failed and old JSONL values are being served.**
+  `codex` itself still reads `ok`, so this field is the only clue. `codex_age=183h`
+  tells you how old the served values are.
+
+  ```
+  claude=ok codex=ok [codex_api=login_required codex_age=183h ...]
+  ```
+
+  **The JSONL only grows when you actually run a turn in Codex** — leaving the app
+  open adds nothing, so the same values can be served for days. The only fix is to
+  restore the API, i.e. log in again.
+- `codex_exp=...` — when the Codex token expires. It lasts about **10 days**, and only
+  the `codex` CLI refreshes it — **the desktop app does not.** Past that time
+  `codex_api=login_required` starts appearing; log in again with `codex` in a terminal.
+  Unlike Claude, there is no automatic recovery.
 - `claude=empty` / `codex=empty` — the request succeeded but no windows could be read. A key
   name changed. Look at `--raw`.
 - `icloud=skipped` — the contents did not change, so the iCloud file was left alone. This is

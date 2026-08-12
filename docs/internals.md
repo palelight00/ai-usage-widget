@@ -97,6 +97,22 @@ GET https://chatgpt.com/backend-api/codex/usage
 1 時間以上古ければその旨を出す（`status` 異常はそちらの表示を優先する）。
 エンドポイント経由なら `source: "api"` / `observed_age_seconds: 0` になる。
 
+**JSONL に落ちた回は `stale: true` も立てる。**実データではあるが現在値ではない。
+`status` は `ok` のままにし、理由は `api_status` に持たせる。
+**表示側で「いつの数値か」を出すときは `observed_at` を優先すること。**
+この経路の `fetched_at` は JSONL を読んだ時刻なので、値の古さを表さない。
+
+### トークンの寿命
+
+`auth.json` の `access_token` は JWT で、`exp` に失効時刻が入っている。これを
+`token_expires_at` として出力する（時刻だけ。トークン本体は外に出さない）。
+
+**Claude が約 8 時間なのに対し、Codex は約 10 日**（実測: 2026-08-12 時点で
+9 日先）。しかも **`auth.json` を更新するのは `codex` CLI だけで、デスクトップ
+アプリは触らない。**この 2 つが重なるため、切れると誰にも気づかれないまま
+1 週間走りうる（実際に 183 時間踏んだ）。Claude 側の `claude -p` に相当する
+自動復旧は未実装。
+
 ## 出力フォーマット
 
 ```json
@@ -119,6 +135,7 @@ GET https://chatgpt.com/backend-api/codex/usage
     "observed_age_seconds": 0,
     "source": "api",
     "plan": "team",
+    "token_expires_at": "...",
     "windows": [{"key":"primary","label":"週次","percent":15.0,"resets_at":"...","window_minutes":10080}]
   }
 }

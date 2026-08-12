@@ -178,7 +178,23 @@ tail -n 20 ~/.ai-usage/fetch.log     # launchd での実行結果を確認
   **Claude Code の CLI のみ**で、デスクトップアプリやそのスケジュール実行では更新
   されません。そのため、失効を検知したときだけ `claude -p` を 1 回（最大で 1 時間に
   1 回）実行し、公式のツールに更新させています
-- `codex=login_required` — `~/.codex/auth.json` を確認してください
+- `codex=login_required` — `~/.codex/auth.json` を確認してください。API と JSONL の
+  **両方**が読めないときだけ出ます
+- `codex_api=...` が付いている — **API が失敗し、JSONL の古い値を配っています。**
+  `codex` 自体は `ok` のままなので、この項目が唯一の手がかりです。`codex_age=183h`
+  のように、配っている値が何時間前のものかも出ます
+
+  ```
+  claude=ok codex=ok [codex_api=login_required codex_age=183h ...]
+  ```
+
+  **JSONL は Codex で実際にターンを回さないと増えません。**アプリを起動している
+  だけでは 1 件も増えないので、放置すると同じ値を何日も配り続けます。復旧は
+  API 側を直す（＝再ログインする）以外にありません
+- `codex_exp=...` — Codex のトークンの失効予定です。**約 10 日**と長く、更新するのは
+  `codex` CLI だけです。**デスクトップアプリでは更新されません。**この時刻を過ぎると
+  `codex_api=login_required` が出はじめるので、ターミナルで `codex` に再ログイン
+  してください（Claude と違い、自動復旧の仕組みはありません）
 - `claude=empty` / `codex=empty` — 通信には成功したものの、枠を 1 件も読み取れていません。
   レスポンスのキー名が変更された可能性が高いため、`--raw` で実際の内容を確認してください
 - `icloud=skipped` — 前回から内容が変わらなかったため、iCloud 上のファイルを更新して

@@ -18,6 +18,7 @@ status を差し替えて stale / last_attempt_at を足す。fetched_at は前�
 from __future__ import annotations
 
 import argparse
+import base64
 import glob
 import json
 import os
@@ -380,6 +381,40 @@ def parse_claude(raw: dict, cred: dict | None) -> dict:
 
 
 # --- Codex --------------------------------------------------------------------
+
+
+def codex_token_expires_at() -> str | None:
+    """auth.json の access_token（JWT）から失効時刻を取る。
+
+    Claude が約 8 時間なのに対し Codex は約 10 日と長い。しかも更新するのは
+    `codex` CLI だけで、デスクトップアプリは触らない（実測）。そのため切れても
+    誰も気づかず、JSONL の古い値を配ったまま何日も走りうる（183 時間踏んだ）。
+    予兆を掴むためにログへ出す。トークン本体は読むだけで外には出さない。
+    """
+    try:
+        with open(CODEX_AUTH_FILE, encoding="utf-8") as fh:
+            auth = json.load(fh)
+    except (OSError, ValueError):
+        return None
+
+    tokens = auth.get("tokens") if isinstance(auth, dict) else None
+    token = tokens.get("access_token") if isinstance(tokens, dict) else None
+    if not isinstance(token, str):
+        return None
+
+    parts = token.split(".")
+    if len(parts) < 2:
+        return None  # JWT でなければ期限は読めない。壊さず諦める
+    body = parts[1] + "=" * (-len(parts[1]) % 4)
+    try:
+        claims = json.loads(base64.urlsafe_b64decode(body))
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(claims, dict):
+        return None
+
+    exp = claims.get("exp")
+    return to_iso(exp) if isinstance(exp, (int, float)) else None
 
 
 def fetch_codex_raw() -> tuple[dict | None, str]:
@@ -786,6 +821,11 @@ def main() -> int:
                     fallback = carry_over(previous, "codex", "empty")
             codex = fallback
 
+    # どの経路で取れたかに関わらず、資格情報の期限は auth.json が持っている
+    codex_expires = codex_token_expires_at()
+    if codex_expires:
+        codex["token_expires_at"] = codex_expires
+
     payload = {
         "schema": 1,
         "app_version": __version__,
@@ -837,6 +877,8 @@ def main() -> int:
         age = codex.get("observed_age_seconds")
         if isinstance(age, (int, float)) and age >= 3600:
             extra.append(f"codex_age={int(age // 3600)}h")
+    if codex.get("token_expires_at"):
+        extra.append(f"codex_exp={codex['token_expires_at']}")
     extra.append(f"icloud={written}")
     extra.append(f"dropbox={public_state}")
     suffix = f" [{' '.join(extra)}]" if extra else ""
