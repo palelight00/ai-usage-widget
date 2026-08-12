@@ -30,7 +30,7 @@ from datetime import datetime, timezone
 
 # 壊れる前提のツールなので、利用者が「どの版か」を言えるようにしておく。
 # AIUsage.js の VERSION と揃えること。
-__version__ = "0.9.0"
+__version__ = "0.9.1"
 
 # --- 実物を見て決めた定数。壊れたら --raw で確認してここを直す -----------------
 

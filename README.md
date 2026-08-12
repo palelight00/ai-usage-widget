@@ -186,7 +186,7 @@ tail -n 20 ~/.ai-usage/fetch.log     # launchd での実行結果を確認
 
 ## バージョン
 
-`0.9.0` です。変更履歴は [CHANGELOG.md](CHANGELOG.md) にあります。
+`0.9.1` です。変更履歴は [CHANGELOG.md](CHANGELOG.md) にあります。
 
 作者の環境では安定して動作していますが、**作者以外の環境での導入例がまだありません。**
 開発中には、シェルのロケールが異なるだけで `install.sh` が失敗する不具合が見つかりました

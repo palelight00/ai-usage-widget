@@ -14,7 +14,7 @@
 //   large  … 1 列。全枠 + リセット時刻 + 追加クレジット
 
 // ai_usage_fetch.py の __version__ と揃えること
-const VERSION = "0.9.0";
+const VERSION = "0.9.1";
 
 const FILE_NAME = "ai-usage.json";
 const CACHE_FILE_NAME = "ai-usage-cache.json"; // 端末内の控え（iCloud が読めないとき用）

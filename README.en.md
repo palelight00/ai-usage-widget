@@ -184,7 +184,7 @@ The log line tells you a lot:
 
 ## Version
 
-`0.9.0`. See [CHANGELOG.md](CHANGELOG.md).
+`0.9.1`. See [CHANGELOG.md](CHANGELOG.md).
 
 It runs reliably for the author, but **nobody else has installed it yet**, so it is 0.9.
 During development a bug was found where `install.sh` failed under a Japanese locale but
