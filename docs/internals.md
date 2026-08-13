@@ -110,8 +110,12 @@ GET https://chatgpt.com/backend-api/codex/usage
 **Claude が約 8 時間なのに対し、Codex は約 10 日**（実測: 2026-08-12 時点で
 9 日先）。しかも **`auth.json` を更新するのは `codex` CLI だけで、デスクトップ
 アプリは触らない。**この 2 つが重なるため、切れると誰にも気づかれないまま
-1 週間走りうる（実際に 183 時間踏んだ）。Claude 側の `claude -p` に相当する
-自動復旧は未実装。
+1 週間走りうる（実際に 183 時間踏んだ）。
+
+そのため `login_required` のときだけ `codex exec` を 1 回叩いて、公式ツールに
+`auth.json` を書き直させる（`claude -p` と同じ考え方。`~/.ai-usage/codex_refresh.stamp`
+で 1 時間に 1 回まで）。成功すると出力に `cli_refresh: true`、ログに
+`codex_cli_refresh` が出る。リフレッシュトークンは自前で使わない。
 
 ## 出力フォーマット
 

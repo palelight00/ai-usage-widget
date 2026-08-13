@@ -57,6 +57,7 @@ CLAUDE_CLI_TIMEOUT = 180
 CLAUDE_REFRESH_PROMPT = "ok"  # 消費を最小にする
 # 成功すれば約 8 時間もつ。30 分ごとに叩くと無駄打ちになり 429 を招くので間隔を空ける。
 CLAUDE_REFRESH_MIN_INTERVAL = 3600
+CLAUDE_REFRESH_STAMP = "cli_refresh.stamp"
 
 # 中身が変わらなくても、この間隔では 1 回書く（Mac が生きていることを端末に伝える）
 ICLOUD_FORCE_WRITE_SECONDS = 2 * 3600
@@ -66,6 +67,22 @@ CODEX_USAGE_URL = "https://chatgpt.com/backend-api/codex/usage"
 CODEX_SESSIONS_DIR = os.path.expanduser("~/.codex/sessions")
 CODEX_SCAN_FILES = 12  # 新しい順に何ファイルまで見るか
 CODEX_TAIL_BYTES = 3_000_000  # 巨大 JSONL は末尾だけ読む
+
+# auth.json を更新するのは codex CLI だけで、デスクトップアプリは触らない（実測）。
+# Claude と同じ考え方で、401 のときだけ CLI に認証を通させる。`codex exec` は
+# 非対話でターンを回すので `claude -p` に相当する（`--version` 相当では駄目、
+# という Claude での教訓をそのまま当てる）。
+CODEX_CLI_CANDIDATES = [
+    "/opt/homebrew/bin/codex",
+    "/usr/local/bin/codex",
+    os.path.expanduser("~/.local/bin/codex"),
+    "codex",
+]
+CODEX_CLI_TIMEOUT = 180
+CODEX_REFRESH_PROMPT = "ok"  # 消費を最小にする
+# 成功すれば約 10 日もつ。失敗し続けるときの無駄打ちを避けるため間隔を空ける。
+CODEX_REFRESH_MIN_INTERVAL = 3600
+CODEX_REFRESH_STAMP = "codex_refresh.stamp"
 
 # 共有リンク用の出力。ウィジェットはこれを HTTPS で取りに行く。
 # iCloud と違い、ウィジェット拡張からでも確実に読める。
@@ -238,23 +255,23 @@ def fetch_claude_raw() -> tuple[dict | None, dict | None, str]:
         return None, cred, f"error:{type(exc).__name__}"
 
 
-def refresh_stamp_path() -> str:
-    return os.path.join(STATE_DIR, "cli_refresh.stamp")
+def refresh_stamp_path(stamp: str) -> str:
+    return os.path.join(STATE_DIR, stamp)
 
 
-def refreshed_recently() -> bool:
+def refreshed_recently(stamp: str, interval: int) -> bool:
     """直近に CLI を叩いたばかりなら、もう一度叩かない。"""
     try:
-        return (time.time() - os.path.getmtime(refresh_stamp_path())) < CLAUDE_REFRESH_MIN_INTERVAL
+        return (time.time() - os.path.getmtime(refresh_stamp_path(stamp))) < interval
     except OSError:
         return False
 
 
-def mark_refresh_attempt() -> None:
+def mark_refresh_attempt(stamp: str) -> None:
     """試行した事実を先に記録する（途中で固まっても間隔が守られるように）。"""
     try:
         os.makedirs(STATE_DIR, exist_ok=True)
-        with open(refresh_stamp_path(), "w", encoding="utf-8") as fh:
+        with open(refresh_stamp_path(stamp), "w", encoding="utf-8") as fh:
             fh.write(now_iso() + "\n")
     except OSError:
         pass
@@ -283,6 +300,45 @@ def nudge_claude_cli() -> bool:
             continue
         if proc.returncode == 0:
             return True
+    return False
+
+
+def nudge_codex_cli() -> bool:
+    """codex CLI で 1 ターン回し、~/.codex/auth.json を更新させる。
+
+    Claude 側と同じで、公式ツールに更新させてから読み直すだけ。
+    リフレッシュトークンは自前で使わない（ローテートするため CLI を壊す）。
+
+    `exec` は非対話でターンを回すので認証を通る。read-only の sandbox と
+    承認なしを明示して、認証を通す以外のことをさせない。ただしフラグ名は
+    CLI の版で変わりうるので、弾かれたら素の `exec` でもう一度試す
+    （引数エラーは即座に非ゼロで返るため、通る版では無駄にならない）。
+    """
+    try:
+        os.makedirs(STATE_DIR, exist_ok=True)
+    except OSError:
+        pass
+    variants = [
+        ["exec", "--sandbox", "read-only", "-a", "never", CODEX_REFRESH_PROMPT],
+        ["exec", CODEX_REFRESH_PROMPT],
+    ]
+    for path in CODEX_CLI_CANDIDATES:
+        for argv in variants:
+            try:
+                proc = subprocess.run(
+                    [path] + argv,
+                    capture_output=True,
+                    text=True,
+                    timeout=CODEX_CLI_TIMEOUT,
+                    stdin=subprocess.DEVNULL,  # 未認証だと入力待ちで固まりうる
+                    cwd=STATE_DIR,  # プロジェクトの AGENTS.md を読ませない
+                )
+            except FileNotFoundError:
+                break  # この path に codex は無い。次の候補へ
+            except (OSError, subprocess.SubprocessError):
+                continue
+            if proc.returncode == 0:
+                return True
     return False
 
 
@@ -760,8 +816,12 @@ def main() -> int:
 
     # 失効していたら CLI に更新させて 1 度だけやり直す（間隔を空けて無駄打ちを防ぐ）
     nudged = False
-    if raw is None and claude_status == "login_required" and not refreshed_recently():
-        mark_refresh_attempt()
+    if (
+        raw is None
+        and claude_status == "login_required"
+        and not refreshed_recently(CLAUDE_REFRESH_STAMP, CLAUDE_REFRESH_MIN_INTERVAL)
+    ):
+        mark_refresh_attempt(CLAUDE_REFRESH_STAMP)
         nudged = nudge_claude_cli()
         if nudged:
             raw, cred, claude_status = fetch_claude_raw()
@@ -788,6 +848,20 @@ def main() -> int:
     # Codex はまず内部エンドポイント（常に現在値）、駄目なら JSONL（古くなりうる）
     codex = None
     codex_raw, codex_status = fetch_codex_raw()
+
+    # Claude と同じ。auth.json を更新できるのは codex CLI だけなので、失効したら
+    # 公式ツールに書き直させる。Codex のトークンは約 10 日もつぶん、切れたまま
+    # 放置されると JSONL の古い値を何日も配ることになる（183 時間の実例）。
+    codex_nudged = False
+    if (
+        codex_raw is None
+        and codex_status == "login_required"
+        and not refreshed_recently(CODEX_REFRESH_STAMP, CODEX_REFRESH_MIN_INTERVAL)
+    ):
+        mark_refresh_attempt(CODEX_REFRESH_STAMP)
+        codex_nudged = nudge_codex_cli()
+        if codex_nudged:
+            codex_raw, codex_status = fetch_codex_raw()
     if codex_raw is not None:
         try:
             parsed = parse_codex_api(codex_raw)
@@ -820,6 +894,9 @@ def main() -> int:
                 else:
                     fallback = carry_over(previous, "codex", "empty")
             codex = fallback
+
+    if codex_nudged:
+        codex["cli_refresh"] = True  # CLI に更新させたことを記録
 
     # どの経路で取れたかに関わらず、資格情報の期限は auth.json が持っている
     codex_expires = codex_token_expires_at()
@@ -868,6 +945,8 @@ def main() -> int:
     extra = []
     if nudged:
         extra.append("cli_refresh")
+    if codex_nudged:
+        extra.append("codex_cli_refresh")
     if claude.get("token_expires_at"):
         extra.append(f"token_exp={claude['token_expires_at']}")
     # JSONL に落ちた回も codex=ok のままなので、これが無いと事後に追えない

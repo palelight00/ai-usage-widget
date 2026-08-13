@@ -190,9 +190,12 @@ The log line tells you a lot:
   open adds nothing, so the same values can be served for days. The only fix is to
   restore the API, i.e. log in again.
 - `codex_exp=...` — when the Codex token expires. It lasts about **10 days**, and only
-  the `codex` CLI refreshes it — **the desktop app does not.** Past that time
-  `codex_api=login_required` starts appearing; log in again with `codex` in a terminal.
-  Unlike Claude, there is no automatic recovery.
+  the `codex` CLI refreshes it — **the desktop app does not** (leaving the app running
+  will not keep it alive).
+- `codex_cli_refresh` — an expiry was detected, so `codex exec` was run once to let the
+  official tool rewrite `auth.json` (at most hourly). Same mechanism as `cli_refresh` on
+  the Claude side. **If this keeps appearing alongside `codex_api=login_required`**, the
+  token cannot be restored automatically — run `codex login` in a terminal.
 - `claude=empty` / `codex=empty` — the request succeeded but no windows could be read. A key
   name changed. Look at `--raw`.
 - `icloud=skipped` — the contents did not change, so the iCloud file was left alone. This is

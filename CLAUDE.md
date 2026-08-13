@@ -149,13 +149,14 @@ API も JSONL も駄目なときは、API 側の失敗理由がそのまま `sta
 - ~~launchd から `security` で keychain を読めるか~~ → 2026-07-26 に確認。
   launchd 実行（`local.ai-usage`）で `claude=ok`、終了コード 0。**読める。**
   長期運用で再ロックされた場合の挙動は引き続き様子見。
-- **Codex のトークン失効時の自動復旧。**Claude は 401 のとき `claude -p` を 1 回
-  呼んで公式に更新させるが、**Codex には同等の仕組みが無い**（`fetch_codex_raw()` は
-  `auth.json` を読むだけ）。2026-08-12 に 183 時間の失効を実際に踏んだ。
-  CLI 自体は入っている（`/opt/homebrew/bin/codex`）ので実装は可能。
-  **`claude -p` に相当する非対話コマンドがどれかだけが未確定**（`codex --help` 待ち）。
-  `claude --version` が駄目で `claude -p` が要ったのと同じで、**認証を通る経路を
-  踏むものでなければ意味がない**点に注意。次の失効予定は実測で 2026-08-22 頃。
+- ~~Codex のトークン失効時の自動復旧~~ → 実装済み（`nudge_codex_cli()`）。
+  `codex exec` が `claude -p` に相当する非対話実行。`login_required` のときだけ
+  1 回叩き、`~/.ai-usage/codex_refresh.stamp` で 1 時間に 1 回までに絞る。
+  フラグ名は版で変わりうるので、弾かれたら素の `exec` で再試行する。
+  **ただし本物の失効では未検証。**トークンがまだ有効なうちは CLI を叩いても
+  更新されない（＝いま試しても延びないのが正常）ので、**次の失効予定
+  2026-08-22 頃が最初の実地テスト**になる。ログの `codex_cli_refresh` と
+  `codex_exp` の変化で判定する。
 - Phase 3 の転送経路。第一候補は Tailscale + Mac 上の小さな HTTP サーバー。
 
 ## 参考
