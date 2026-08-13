@@ -48,9 +48,32 @@ see [below](#windows-and-linux).
 | | What you need |
 |---|---|
 | Collector | **macOS** (always-on, sleep disabled recommended), Python 3 |
-| | Claude Code CLI (optional but recommended — used to recover an expired token) |
+| | Claude Code CLI and the `codex` CLI (**strongly recommended** — used to recover expired tokens) |
 | Widget | **iPhone / iPad** + [Scriptable](https://scriptable.app/) |
 | Transport | Somewhere you can create a share link: Dropbox, Google Drive, OneDrive, or your own HTTP server |
+
+> ### ⚠️ It reads the CLI's credentials
+>
+> **If you only ever use the desktop apps, this will eventually stop fetching your usage.**
+>
+> The apps and the CLIs keep credentials in different places, and this tool reads the CLI
+> side. No amount of app usage refreshes the files below.
+>
+> | | What this tool reads | What can refresh it |
+> |---|---|---|
+> | Claude | keychain item `Claude Code-credentials` | **the Claude Code CLI only** |
+> | Codex | `~/.codex/auth.json` | **the `codex` CLI only** |
+>
+> Both measured. Claude returned `login_required` 53 times over 27 hours with the app
+> running; Codex stayed expired for 183 hours with the app running.
+> **Scheduled runs inside the app do not refresh them either.**
+>
+> **With the CLIs installed, recovery is automatic** — on detecting an expiry the collector
+> makes a single call (`claude -p` for Claude, `codex exec` for Codex; at most hourly, each
+> consuming one turn). Without them, you have to log in by hand every time a token expires.
+>
+> Token lifetimes: **about 8 hours for Claude, about 10 days for Codex.** The longer Codex
+> lifetime makes an expiry easy to miss — it can serve stale numbers for days.
 
 **Verified on Claude Max and Codex team plans only.** Other plans are untested — the shape
 of `limits[]` and Codex's `secondary_window` may differ.
@@ -203,7 +226,7 @@ The log line tells you a lot:
 
 ## Version
 
-`0.9.1`. See [CHANGELOG.md](CHANGELOG.md).
+`0.10.0`. See [CHANGELOG.md](CHANGELOG.md).
 
 It runs reliably for the author, but **nobody else has installed it yet**, so it is 0.9.
 During development a bug was found where `install.sh` failed under a Japanese locale but

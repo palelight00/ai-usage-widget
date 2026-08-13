@@ -46,9 +46,32 @@ iOS の [Scriptable](https://scriptable.app/) ウィジェットがそれを読�
 | | 必要なもの |
 |---|---|
 | 収集 | **macOS**（常時起動・スリープしない設定を推奨）、Python 3 |
-| | Claude Code CLI（任意。トークン失効時の復旧に使用します） |
+| | Claude Code CLI と `codex` CLI（**強く推奨。**トークン失効時の自動復旧に使います） |
 | 表示 | **iPhone / iPad**、[Scriptable](https://scriptable.app/) |
 | 受け渡し | 共有リンクを作成できる場所（Dropbox / Google ドライブ / OneDrive / 自前の HTTP サーバー） |
+
+> ### ⚠️ 読み取るのは CLI の認証情報です
+>
+> **デスクトップアプリだけを使っていると、いずれ使用枠を取得できなくなります。**
+>
+> アプリと CLI では認証情報の保管場所が別で、このツールが読むのは CLI 側です。
+> アプリをどれだけ使っても、下記のファイルは更新されません。
+>
+> | | このツールが読む場所 | 更新できるもの |
+> |---|---|---|
+> | Claude | keychain の `Claude Code-credentials` | **Claude Code CLI のみ** |
+> | Codex | `~/.codex/auth.json` | **`codex` CLI のみ** |
+>
+> いずれも実測です。Claude はアプリを起動したまま 27 時間・53 回連続で
+> `login_required`、Codex はアプリ常時起動のまま 183 時間失効し続けました。
+> **アプリのスケジュール実行（ルーティン）でも更新されません。**
+>
+> **CLI を入れておけば自動で復旧します。**失効を検知したときだけ 1 回呼び出します
+> （Claude は `claude -p`、Codex は `codex exec`。どちらも最大 1 時間に 1 回、
+> ターンを 1 回消費します）。入れない場合は、失効のたびに手動でのログインが必要です。
+>
+> トークンの寿命は **Claude が約 8 時間、Codex が約 10 日**です。Codex は長いぶん、
+> 切れても気づきにくく、古い値を何日も表示し続けることがあります。
 
 **動作を確認したプランは Claude Max と Codex team のみです。**他のプランでは未検証で、
 `limits[]` の構成や Codex の `secondary_window` が異なる可能性があります。
@@ -205,7 +228,7 @@ tail -n 20 ~/.ai-usage/fetch.log     # launchd での実行結果を確認
 
 ## バージョン
 
-`0.9.1` です。変更履歴は [CHANGELOG.md](CHANGELOG.md) にあります。
+`0.10.0` です。変更履歴は [CHANGELOG.md](CHANGELOG.md) にあります。
 
 作者の環境では安定して動作していますが、**作者以外の環境での導入例がまだありません。**
 開発中には、シェルのロケールが異なるだけで `install.sh` が失敗する不具合が見つかりました
