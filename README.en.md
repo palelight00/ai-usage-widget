@@ -32,12 +32,19 @@ The widget follows the device language — Japanese on Japanese devices, English
 ## What it looks like
 
 <p align="center">
-  <img src="docs/images/widget-large.jpg" width="330" alt="Large widget showing Claude at 39% of the 5-hour window, 46% weekly and 1% weekly (Fable), Codex at 40% weekly, each with time until reset, and extra credits along the bottom">
-  <img src="docs/images/widget-medium-small.jpg" width="330" alt="Medium widget with Claude and Codex side by side in two columns, and the small widget in a single column">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/widget-large-dark.jpg">
+    <img src="docs/images/widget-large-light.jpg" width="330" alt="Large widget showing Claude at 31% of the 5-hour window, 10% weekly and 1% weekly (Fable), Codex at 77% weekly, with a line under each bar giving both the time until reset and the date, such as in 58m (08/15 21:59)">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/widget-medium-small-dark.jpg">
+    <img src="docs/images/widget-medium-small-light.jpg" width="330" alt="Medium widget with Claude and Codex side by side in two columns, each row showing a compact reset timestamp to the left of the percentage, and the small widget in a single column without timestamps">
+  </picture>
 </p>
 
 Large on the left; medium (top) and small (bottom) on the right.
 The screenshots are from a Japanese device — on other devices the widget is in English.
+The images follow your device theme, switching between light and dark.
 See [Widget layout](#widget-layout) for what each size shows.
 
 ## Requirements
@@ -176,6 +183,9 @@ Layout differs by size, because small and medium are only 158pt tall:
 | small | 1 column | Claude 2 windows + Codex (`weekly_scoped` omitted — it is a subset of weekly) |
 | medium | **2 columns** (Claude \| Codex) | All windows + reset times (compact `MM/DD HH:MM`, inline) |
 | large | 1 column | All windows + time until reset with date (`in 3d (08/20 13:02)`) + credits |
+
+The credits line appears only when extra-credit information is available — the screenshots
+above do not show it.
 
 See [What it looks like](#what-it-looks-like) for screenshots.
 

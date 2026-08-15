@@ -31,12 +31,19 @@ iOS の [Scriptable](https://scriptable.app/) ウィジェットがそれを読�
 ## 表示例
 
 <p align="center">
-  <img src="docs/images/widget-large.jpg" width="330" alt="large サイズのウィジェット。Claude の 5 時間枠 39%、週次 46%、週次 (Fable) 1%、Codex の週次 40% と、それぞれのリセットまでの時間、下部に追加クレジットを表示している">
-  <img src="docs/images/widget-medium-small.jpg" width="330" alt="medium サイズのウィジェット（Claude と Codex を 2 列に並べたもの）と、small サイズのウィジェット（1 列）">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/widget-large-dark.jpg">
+    <img src="docs/images/widget-large-light.jpg" width="330" alt="large サイズのウィジェット。Claude の 5 時間枠 31%、週次 10%、週次 (Fable) 1%、Codex の週次 77% を表示し、各バーの下に「リセット 58分後（08/15 21:59）」のように残り時間と日時を並べている">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/widget-medium-small-dark.jpg">
+    <img src="docs/images/widget-medium-small-light.jpg" width="330" alt="medium サイズのウィジェット（Claude と Codex を 2 列に並べ、各行の % の左にリセット日時を小さく添えたもの）と、small サイズのウィジェット（1 列、日時なし）">
+  </picture>
 </p>
 
 左が large。右は medium（上・2 列）と small（下）です。
 サイズごとの違いは[ウィジェットのレイアウト](#ウィジェットのレイアウト)にまとめています。
+画像は端末のテーマに合わせて light / dark が切り替わります。
 
 ## 動作環境
 
@@ -177,6 +184,9 @@ Claude と Codex はサービスごとにグループ分けし、見出し・区
 | small | 1 列 | Claude の 2 枠と Codex（`weekly_scoped` は週次枠の内訳のため省略） |
 | medium | **2 列**（Claude ｜ Codex） | すべての枠、リセット日時（`MM/DD HH:MM` を行内に簡略表示） |
 | large | 1 列 | すべての枠、リセットまでの時間と日時（`3日後（08/20 13:02）`）、クレジット |
+
+クレジットの行が出るのは、追加クレジットの情報を取得できたときだけです
+（上の表示例には写っていません）。
 
 実際の表示は[表示例](#表示例)にあります。
 
