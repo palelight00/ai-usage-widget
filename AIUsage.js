@@ -10,8 +10,8 @@
 // サービスごとにグループ化し、見出し・区切り・サービス色で Claude / Codex を見分ける。
 // サイズごとに入る情報量が違うので、レイアウト自体を変える:
 //   small  … 1 列。Claude 2 枠 + Codex。縦 158pt に収めるため副次的な枠は省く
-//   medium … 2 列（Claude | Codex）。縦が足りないので横幅を使う
-//   large  … 1 列。全枠 + リセット時刻 + 追加クレジット
+//   medium … 2 列（Claude | Codex）。縦が足りないので横幅を使い、リセット日時は行内へ
+//   large  … 1 列。全枠 + リセットまでの時間 + 追加クレジット
 
 // ai_usage_fetch.py の __version__ と揃えること
 const VERSION = "0.10.0";
@@ -199,13 +199,15 @@ function windowLabel(w) {
   return w.scope_model ? `${base} (${w.scope_model})` : base;
 }
 
-// medium の狭い列でも収まるリセット日時。端末のローカル時刻で MM/DD/HH:MM。
+// medium の狭い列でも収まるリセット日時。端末のローカル時刻で MM/DD HH:MM。
+// 日付と時刻の区切りは空白にする。すべて `/` だと `08/15/10:50` が
+// 3 連の日付に見えて、どこまでが日付か一瞬迷う。幅は空白のほうが狭い。
 function compactResetText(iso) {
   if (!iso) return null;
   const date = new Date(iso);
   if (isNaN(date.getTime())) return null;
   const two = (value) => String(value).padStart(2, "0");
-  return `${two(date.getMonth() + 1)}/${two(date.getDate())}/${two(date.getHours())}:${two(date.getMinutes())}`;
+  return `${two(date.getMonth() + 1)}/${two(date.getDate())} ${two(date.getHours())}:${two(date.getMinutes())}`;
 }
 
 // --- 配色 ---------------------------------------------------------------------
@@ -599,17 +601,20 @@ function addRow(stack, row, group, size, barWidth) {
   label.lineLimit = 1;
   label.minimumScaleFactor = 0.8;
 
+  head.addSpacer();
+
+  // リセット日時は % のすぐ左に置く。ラベルの直後だとラベルの長さで開始位置が
+  // 動き、行ごとに桁がばらつく（実測で 65pt / 69pt / 107pt と散った）。
+  // % の桁数ぶん（1 文字程度）はまだ動くが、ここは深追いしない。
   const compactReset = size.inlineReset > 0 ? compactResetText(row.resetsAt) : null;
   if (compactReset) {
-    head.addSpacer(4);
     const reset = head.addText(compactReset);
     reset.font = Font.systemFont(size.inlineReset);
     reset.textColor = COLOR.dim;
     reset.lineLimit = 1;
     reset.minimumScaleFactor = 0.8;
+    head.addSpacer(6);
   }
-
-  head.addSpacer();
 
   const pct = head.addText(`${Math.round(row.percent)}%`);
   pct.font = Font.boldSystemFont(size.label);

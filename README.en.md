@@ -174,8 +174,8 @@ Layout differs by size, because small and medium are only 158pt tall:
 | Size | Layout | Contents |
 |---|---|---|
 | small | 1 column | Claude 2 windows + Codex (`weekly_scoped` omitted — it is a subset of weekly) |
-| medium | **2 columns** (Claude \| Codex) | All windows, no reset times |
-| large | 1 column | All windows + reset times + credits |
+| medium | **2 columns** (Claude \| Codex) | All windows + reset times (compact `MM/DD HH:MM`, inline) |
+| large | 1 column | All windows + time until reset + credits |
 
 See [What it looks like](#what-it-looks-like) for screenshots.
 
