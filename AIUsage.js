@@ -11,7 +11,7 @@
 // サイズごとに入る情報量が違うので、レイアウト自体を変える:
 //   small  … 1 列。Claude 2 枠 + Codex。縦 158pt に収めるため副次的な枠は省く
 //   medium … 2 列（Claude | Codex）。縦が足りないので横幅を使い、リセット日時は行内へ
-//   large  … 1 列。全枠 + リセットまでの時間 + 追加クレジット
+//   large  … 1 列。全枠 + リセットまでの時間と日時 + 追加クレジット
 
 // ai_usage_fetch.py の __version__ と揃えること
 const VERSION = "0.11.0";
@@ -67,6 +67,7 @@ const STRINGS = {
     hourIn: (n) => `${n}時間後`,
     dayIn: (n) => `${n}日後`,
     resets: (t) => `リセット ${t}`,
+    resetsAt: (rel, abs) => `リセット ${rel}（${abs}）`,
     valueFrom: (t) => `${t}の値`,
     noData: "データがありません",
     loadFailed: "データを読み込めませんでした",
@@ -127,6 +128,7 @@ const STRINGS = {
     hourIn: (n) => `in ${n}h`,
     dayIn: (n) => `in ${n}d`,
     resets: (t) => `Resets ${t}`,
+    resetsAt: (rel, abs) => `Resets ${rel} (${abs})`,
     valueFrom: (t) => `as of ${t}`,
     noData: "No data",
     loadFailed: "Could not load data",
@@ -622,10 +624,22 @@ function addRow(stack, row, group, size, barWidth) {
 
   addBar(container, row.percent, group.accent, barWidth, size.bar);
 
+  // large は幅に余裕があるので相対と日時を両方出す。相対だけだと「いつ」が
+  // 分からず、日時だけだと残りが読めない。どちらかが読めなければ読めたほうだけ、
+  // 両方だめなら行ごと出さない（前は untilText が "" を返すと「リセット 」が残った）。
   if (size.reset > 0 && row.resetsAt) {
-    const reset = container.addText(T.resets(untilText(row.resetsAt)));
-    reset.font = Font.systemFont(size.reset);
-    reset.textColor = COLOR.dim;
+    const rel = untilText(row.resetsAt);
+    const abs = compactResetText(row.resetsAt);
+    let text = null;
+    if (rel && abs) text = T.resetsAt(rel, abs);
+    else if (rel) text = T.resets(rel);
+    else if (abs) text = T.resets(abs);
+
+    if (text) {
+      const reset = container.addText(text);
+      reset.font = Font.systemFont(size.reset);
+      reset.textColor = COLOR.dim;
+    }
   }
 }
 

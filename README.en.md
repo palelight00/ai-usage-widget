@@ -175,7 +175,7 @@ Layout differs by size, because small and medium are only 158pt tall:
 |---|---|---|
 | small | 1 column | Claude 2 windows + Codex (`weekly_scoped` omitted — it is a subset of weekly) |
 | medium | **2 columns** (Claude \| Codex) | All windows + reset times (compact `MM/DD HH:MM`, inline) |
-| large | 1 column | All windows + time until reset + credits |
+| large | 1 column | All windows + time until reset with date (`in 3d (08/20 13:02)`) + credits |
 
 See [What it looks like](#what-it-looks-like) for screenshots.
 
