@@ -199,6 +199,15 @@ function windowLabel(w) {
   return w.scope_model ? `${base} (${w.scope_model})` : base;
 }
 
+// medium の狭い列でも収まるリセット日時。端末のローカル時刻で MM/DD/HH:MM。
+function compactResetText(iso) {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return null;
+  const two = (value) => String(value).padStart(2, "0");
+  return `${two(date.getMonth() + 1)}/${two(date.getDate())}/${two(date.getHours())}:${two(date.getMinutes())}`;
+}
+
 // --- 配色 ---------------------------------------------------------------------
 
 const COLOR = {
@@ -221,12 +230,13 @@ function barColor(percent, accent) {
 }
 
 // --- サイズごとの寸法 -------------------------------------------------------------
-// small / medium は縦 158pt しかないので、リセット時刻の行は large でのみ出す。
+// medium は縦 158pt しかないため、リセット日時を行ラベル横へ小さく出す。
+// small は省略し、large は従来どおり各バーの下へ詳しく表示する。
 
 const SIZE = {
-  small: { title: 10, age: 8, section: 9, label: 10, bar: 4, reset: 0, gapRow: 3, gapGroup: 5 },
-  medium: { title: 12, age: 9, section: 10, label: 11, bar: 6, reset: 0, gapRow: 6, gapGroup: 8 },
-  large: { title: 13, age: 10, section: 11, label: 12, bar: 7, reset: 9, gapRow: 9, gapGroup: 12 },
+  small: { title: 10, age: 8, section: 9, label: 10, bar: 4, reset: 0, inlineReset: 0, gapRow: 3, gapGroup: 5 },
+  medium: { title: 12, age: 9, section: 10, label: 11, bar: 6, reset: 0, inlineReset: 7, gapRow: 6, gapGroup: 8 },
+  large: { title: 13, age: 10, section: 11, label: 12, bar: 7, reset: 9, inlineReset: 0, gapRow: 9, gapGroup: 12 },
 };
 
 // バーは幅を明示しないと比率で塗れない。画面幅から実際のウィジェット幅を見積もる。
@@ -588,6 +598,16 @@ function addRow(stack, row, group, size, barWidth) {
   label.textColor = COLOR.text;
   label.lineLimit = 1;
   label.minimumScaleFactor = 0.8;
+
+  const compactReset = size.inlineReset > 0 ? compactResetText(row.resetsAt) : null;
+  if (compactReset) {
+    head.addSpacer(4);
+    const reset = head.addText(compactReset);
+    reset.font = Font.systemFont(size.inlineReset);
+    reset.textColor = COLOR.dim;
+    reset.lineLimit = 1;
+    reset.minimumScaleFactor = 0.8;
+  }
 
   head.addSpacer();
 
