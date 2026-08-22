@@ -117,6 +117,25 @@ GET https://chatgpt.com/backend-api/codex/usage
 で 1 時間に 1 回まで）。成功すると出力に `cli_refresh: true`、ログに
 `codex_cli_refresh` が出る。リフレッシュトークンは自前で使わない。
 
+**叩いた分の rollout は自分で掃除する。**`codex exec` は 1 回ごとに
+`~/.codex/sessions/` へ rollout を 1 本増やすので、放っておくと `codex resume` の
+一覧が「`ok` としか言わないセッション」で埋まっていく（実際にそうなった）。
+叩いた回の最後に `prune_codex_nudge_sessions()` を呼び、**`cwd` が `~/.ai-usage` の
+rollout だけ**を新しいほうから 1 本残して消す。nudge は `cwd=~/.ai-usage` で回して
+いる（プロジェクトの `AGENTS.md` を読ませないため）ので、この cwd で始まった
+セッションは自分の分しかない。`cwd` は先頭の `session_meta` から読む
+（ラッパーのキーは版で `payload` / `item` / 素の dict と変わるので 3 通り見る。
+読めなければ触らない）。
+
+1 本残すのは、**CLI はターンを回せたのにこちらの再取得が失敗した場合**に、その
+rollout がいちばん新しい `rate_limits` を持っているから（JSONL フォールバックの
+材料になる）。0 本にすると、その回の実データを自分で捨てることになる。
+
+掃除は叩いた回にしか走らない（増えるのがそのときだけなので十分）。溜まった分を
+まとめて消すなら `--prune-codex-sessions`、対象だけ見るなら `--dry-run` を足す。
+消した本数はログに `codex_pruned=N` として出る。**`~/.ai-usage` で codex を手で
+回すと巻き添えで消える**ので、デバッグは別のディレクトリでやること。
+
 ## 出力フォーマット
 
 ```json

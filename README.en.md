@@ -79,6 +79,12 @@ see [below](#windows-and-linux).
 > makes a single call (`claude -p` for Claude, `codex exec` for Codex; at most hourly, each
 > consuming one turn). Without them, you have to log in by hand every time a token expires.
 >
+> **On the Codex side the sessions this creates are cleaned up.** Every `codex exec` adds one
+> more session that says nothing but `ok` to your `codex resume` list, so all but the newest
+> one is deleted automatically. To clear a backlog in one go, run
+> `python3 ai_usage_fetch.py --prune-codex-sessions` (only sessions whose `cwd` is
+> `~/.ai-usage` are ever deleted).
+>
 > Token lifetimes: **about 8 hours for Claude, about 10 days for Codex.** The longer Codex
 > lifetime makes an expiry easy to miss — it can serve stale numbers for days.
 
@@ -229,6 +235,11 @@ The log line tells you a lot:
   official tool rewrite `auth.json` (at most hourly). Same mechanism as `cli_refresh` on
   the Claude side. **If this keeps appearing alongside `codex_api=login_required`**, the
   token cannot be restored automatically — run `codex login` in a terminal.
+- `codex_pruned=N` — N sessions left behind in `~/.codex/sessions/` by the `codex exec`
+  above were deleted, so the `codex resume` list does not fill up with sessions that say
+  nothing but `ok`. **Only sessions whose `cwd` is `~/.ai-usage` are deleted**, and the
+  newest one is kept as material for the JSONL fallback. So **do not run `codex` by hand
+  from `~/.ai-usage`** — it would be swept up too.
 - `claude=empty` / `codex=empty` — the request succeeded but no windows could be read. A key
   name changed. Look at `--raw`.
 - `icloud=skipped` — the contents did not change, so the iCloud file was left alone. This is

@@ -13,6 +13,8 @@ status を差し替えて stale / last_attempt_at を足す。fetched_at は前�
     python3 ai_usage_fetch.py          # 通常実行
     python3 ai_usage_fetch.py --raw    # 生レスポンス / 生イベントを表示して終了
     python3 ai_usage_fetch.py --stdout # 書き出さず結果 JSON を表示
+    python3 ai_usage_fetch.py --prune-codex-sessions  # 更新のために回した codex
+                                       # セッション（"ok" だけの分）を掃除する
 """
 
 from __future__ import annotations
@@ -83,6 +85,16 @@ CODEX_REFRESH_PROMPT = "ok"  # 消費を最小にする
 # 成功すれば約 10 日もつ。失敗し続けるときの無駄打ちを避けるため間隔を空ける。
 CODEX_REFRESH_MIN_INTERVAL = 3600
 CODEX_REFRESH_STAMP = "codex_refresh.stamp"
+
+# 1 ターン回すと ~/.codex/sessions に rollout が 1 本増える。放っておくと
+# `codex resume` の一覧が "ok" しか言わないセッションで埋まっていく（実際に
+# そうなった）。叩いたあとに自分の分だけ掃除して、増え続けないようにする。
+#
+# 直近 1 本だけ残すのは、CLI はターンを回せたのにこちらの再取得が失敗した場合に、
+# その rollout がいちばん新しい rate_limits を持っているから（JSONL フォールバックの
+# 材料になる）。0 本にすると、その回の実データを自分で捨てることになる。
+CODEX_NUDGE_KEEP = 1
+CODEX_META_LINES = 5  # cwd を持つ行（session_meta / turn_context）は先頭にある
 
 # 共有リンク用の出力。ウィジェットはこれを HTTPS で取りに行く。
 # iCloud と違い、ウィジェット拡張からでも確実に読める。
@@ -564,6 +576,66 @@ def codex_rollout_files() -> list[str]:
     return sorted(files, key=os.path.getmtime, reverse=True)
 
 
+def rollout_cwd(path: str) -> str | None:
+    """rollout の先頭にある session_meta から cwd を取る。
+
+    ラッパーのキーは版で変わる（`payload` / `item` / 素の dict を見た）。
+    どれでも拾えるよう 3 通り試す。読めなければ None を返して掃除対象から外す
+    （分からないものは消さない）。
+    """
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            for _ in range(CODEX_META_LINES):
+                line = fh.readline()
+                if not line:
+                    break
+                if '"cwd"' not in line:
+                    continue
+                try:
+                    item = json.loads(line)
+                except ValueError:
+                    continue
+                if not isinstance(item, dict):
+                    continue
+                for scope in (item.get("payload"), item.get("item"), item):
+                    if isinstance(scope, dict) and isinstance(scope.get("cwd"), str):
+                        return scope["cwd"]
+    except OSError:
+        return None
+    return None
+
+
+def codex_nudge_rollouts() -> list[str]:
+    """nudge_codex_cli() が残した rollout を新しい順に返す。
+
+    見分けるのは cwd。nudge は `cwd=~/.ai-usage` で回している（プロジェクトの
+    AGENTS.md を読ませないため）ので、そこで始まったセッションは自分の分しかない。
+    ここはキャッシュとログの置き場で、人が codex を回す場所ではない
+    （**回すと掃除に巻き込まれる**。デバッグは別のディレクトリでやること）。
+    """
+    ours = []
+    mine = os.path.realpath(STATE_DIR)
+    for path in codex_rollout_files():
+        cwd = rollout_cwd(path)
+        # cwd が読めなかったものは触らない（realpath("") は自分の cwd を返すので、
+        # None をそのまま渡すと巻き添えで消しかねない）
+        if cwd and os.path.realpath(cwd) == mine:
+            ours.append(path)
+    return ours
+
+
+def prune_codex_nudge_sessions(keep: int = CODEX_NUDGE_KEEP) -> list[str]:
+    """自分が残した rollout を、新しいほうから keep 本だけ残して消す。"""
+    removed = []
+    for path in codex_nudge_rollouts()[keep:]:
+        try:
+            os.remove(path)
+        except OSError:
+            continue  # 消せなくても本業は続ける
+        removed.append(path)
+    return removed
+
+
 def iter_tail_lines(path: str):
     """末尾 CODEX_TAIL_BYTES を新しい行から順に返す。"""
     try:
@@ -791,6 +863,41 @@ def dump_raw() -> int:
     else:
         print("source:", source)
         print(json.dumps(event, ensure_ascii=False, indent=2))
+
+    ours = codex_nudge_rollouts()
+    print(f"\n=== 更新のために回した codex セッション（cwd={STATE_DIR}）===")
+    print(f"{len(ours)} 本（--prune-codex-sessions で最新 {CODEX_NUDGE_KEEP} 本を残して消せる）")
+    for path in ours[:5]:
+        print(" ", path)
+    if len(ours) > 5:
+        print(f"  ... 他 {len(ours) - 5} 本")
+    return 0
+
+
+def prune_command(dry_run: bool) -> int:
+    """`codex resume` に溜まった "ok" だけのセッションを掃除する。
+
+    通常は叩いた直後に main() が自動でやる。これは、その仕組みを入れる前に
+    溜まった分をまとめて消すため（と、何が対象か目で確かめるため）の入口。
+    """
+    ours = codex_nudge_rollouts()
+    if not ours:
+        print(f"対象なし（cwd={STATE_DIR} で始まった rollout は見つからなかった）")
+        return 0
+
+    for path in ours[:CODEX_NUDGE_KEEP]:
+        print("残す:", path)
+    targets = ours[CODEX_NUDGE_KEEP:]
+    if dry_run:
+        for path in targets:
+            print("消す:", path)
+        print(f"{len(targets)} 本が対象（--dry-run なので消していない）")
+        return 0
+
+    removed = prune_codex_nudge_sessions()
+    for path in removed:
+        print("消した:", path)
+    print(f"{len(removed)} 本消した（失敗 {len(targets) - len(removed)} 本）")
     return 0
 
 
@@ -799,6 +906,12 @@ def main() -> int:
     parser.add_argument("--version", action="version", version=f"ai-usage {__version__}")
     parser.add_argument("--raw", action="store_true", help="生レスポンス / 生イベントを表示して終了")
     parser.add_argument("--stdout", action="store_true", help="ファイルに書かず結果 JSON を表示")
+    parser.add_argument(
+        "--prune-codex-sessions",
+        action="store_true",
+        help=f"更新のために回した codex セッション（cwd={STATE_DIR}）を消す。最新 1 本は残す",
+    )
+    parser.add_argument("--dry-run", action="store_true", help="--prune-codex-sessions で消さずに一覧する")
     parser.add_argument("--out", default=OUTPUT_PATH, help="出力先 JSON のパス")
     parser.add_argument(
         "--public",
@@ -809,6 +922,9 @@ def main() -> int:
 
     if args.raw:
         return dump_raw()
+
+    if args.prune_codex_sessions:
+        return prune_command(args.dry_run)
 
     previous = load_previous(args.out) or load_previous(os.path.join(STATE_DIR, "last.json"))
 
@@ -853,12 +969,14 @@ def main() -> int:
     # 公式ツールに書き直させる。Codex のトークンは約 10 日もつぶん、切れたまま
     # 放置されると JSONL の古い値を何日も配ることになる（183 時間の実例）。
     codex_nudged = False
+    codex_nudge_tried = False
     if (
         codex_raw is None
         and codex_status == "login_required"
         and not refreshed_recently(CODEX_REFRESH_STAMP, CODEX_REFRESH_MIN_INTERVAL)
     ):
         mark_refresh_attempt(CODEX_REFRESH_STAMP)
+        codex_nudge_tried = True  # 失敗した回も rollout は残りうる。掃除の対象にする
         codex_nudged = nudge_codex_cli()
         if codex_nudged:
             codex_raw, codex_status = fetch_codex_raw()
@@ -902,6 +1020,10 @@ def main() -> int:
     codex_expires = codex_token_expires_at()
     if codex_expires:
         codex["token_expires_at"] = codex_expires
+
+    # 自分が残した rollout を掃除する。叩いた回だけで足りる（増えるのはそのときだけ）。
+    # 読み終えてからやること。先に消すと JSONL フォールバックの材料を自分で捨てる。
+    pruned = prune_codex_nudge_sessions() if codex_nudge_tried else []
 
     payload = {
         "schema": 1,
@@ -958,6 +1080,8 @@ def main() -> int:
             extra.append(f"codex_age={int(age // 3600)}h")
     if codex.get("token_expires_at"):
         extra.append(f"codex_exp={codex['token_expires_at']}")
+    if pruned:
+        extra.append(f"codex_pruned={len(pruned)}")
     extra.append(f"icloud={written}")
     extra.append(f"dropbox={public_state}")
     suffix = f" [{' '.join(extra)}]" if extra else ""

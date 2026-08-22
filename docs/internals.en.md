@@ -101,6 +101,18 @@ notes the age on medium / large sizes when every `status` is `ok` and the data i
 hour old (a bad `status` takes display priority). Via the endpoint it is
 `source: "api"` / `observed_age_seconds: 0`.
 
+**The refresh turns clean up after themselves.** On `login_required` the collector runs
+`codex exec` once to let the official tool rewrite `auth.json`, and every such turn adds
+one more rollout — left alone, `codex resume` fills up with sessions that say nothing but
+`ok`. After a refresh attempt, `prune_codex_nudge_sessions()` deletes **only rollouts whose
+`cwd` is `~/.ai-usage`** (the directory the nudge runs from, so no human session shares it),
+keeping the newest one: if the CLI could run a turn but the retried API call still failed,
+that rollout holds the freshest `rate_limits`. The `cwd` is read from the leading
+`session_meta` line (the wrapper key is `payload` / `item` / bare depending on the version,
+so all three are tried; unreadable files are left alone). Use `--prune-codex-sessions` to
+clear a backlog, `--dry-run` to list it first. **Do not run codex by hand from
+`~/.ai-usage`** — it would be swept up too.
+
 ## Output format
 
 ```json

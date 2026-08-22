@@ -77,6 +77,12 @@ iOS の [Scriptable](https://scriptable.app/) ウィジェットがそれを読�
 > （Claude は `claude -p`、Codex は `codex exec`。どちらも最大 1 時間に 1 回、
 > ターンを 1 回消費します）。入れない場合は、失効のたびに手動でのログインが必要です。
 >
+> **Codex 側は、このとき増えるセッションを片付けます。**`codex exec` を 1 回回すと
+> `codex resume` の一覧に「`ok` としか言わないセッション」が 1 本増えるため、最新の
+> 1 本だけ残して自動で消します。溜まってしまった分は
+> `python3 ai_usage_fetch.py --prune-codex-sessions` でまとめて掃除できます
+> （消す対象は `cwd` が `~/.ai-usage` のセッションだけです）。
+>
 > トークンの寿命は **Claude が約 8 時間、Codex が約 10 日**です。Codex は長いぶん、
 > 切れても気づきにくく、古い値を何日も表示し続けることがあります。
 
@@ -231,6 +237,11 @@ tail -n 20 ~/.ai-usage/fetch.log     # launchd での実行結果を確認
   `auth.json` を更新させました（最大で 1 時間に 1 回）。Claude 側の `cli_refresh` と
   同じ仕組みです。**これが出ているのに `codex_api=login_required` が続く場合は、
   自動では戻せない状態**なので、ターミナルで `codex login` を実行してください
+- `codex_pruned=N` — 上の `codex exec` が `~/.codex/sessions/` に残したセッションを
+  N 本消しました。`codex resume` の一覧が `ok` としか言わないセッションで埋まらない
+  ようにするためのものです。**消すのは `cwd` が `~/.ai-usage` のものだけ**で、最新の
+  1 本は JSONL フォールバックの材料として残します。そのため
+  **`~/.ai-usage` で `codex` を手で回さないでください**（掃除に巻き込まれます）
 - `claude=empty` / `codex=empty` — 通信には成功したものの、枠を 1 件も読み取れていません。
   レスポンスのキー名が変更された可能性が高いため、`--raw` で実際の内容を確認してください
 - `icloud=skipped` — 前回から内容が変わらなかったため、iCloud 上のファイルを更新して
