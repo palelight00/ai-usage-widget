@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 
 # 壊れる前提のツールなので、利用者が「どの版か」を言えるようにしておく。
 # AIUsage.js の VERSION と揃えること。
-__version__ = "0.14.0"
+__version__ = "0.14.1"
 
 # --- 実物を見て決めた定数。壊れたら --raw で確認してここを直す -----------------
 
@@ -67,6 +67,10 @@ CODEX_USAGE_URL = "https://chatgpt.com/backend-api/codex/usage"
 CODEX_SESSIONS_DIR = os.path.expanduser("~/.codex/sessions")
 CODEX_SCAN_FILES = 12  # 新しい順に何ファイルまで見るか
 CODEX_TAIL_BYTES = 3_000_000  # 巨大 JSONL は末尾だけ読む
+# 現行の codex は 7 日より古い rollout を .zst に圧縮する（mtime 基準・起動時の
+# バックグラウンドジョブ。2026-08-26 に openai/codex のソースで確認）。ここは素の
+# .jsonl しか読まないので、フォールバックが拾えるのは直近 1 週間ぶんだけ。
+# それより古い値はどのみち表示する価値が薄いので、.zst の展開には対応しない。
 
 # auth.json を更新するのは codex CLI だけで、デスクトップアプリは触らない（実測）。
 # Claude と同じ考え方で、401 のときだけ CLI に認証を通させる。`codex exec` は
@@ -804,6 +808,12 @@ def dump_raw() -> int:
     if event is None:
         print("イベントなし。JSONL は Codex で実際にターンを回さないと増えない")
         print("（アプリ起動や /status だけでは増えない）。API 側の復旧を優先する。")
+        zst = glob.glob(
+            os.path.join(CODEX_SESSIONS_DIR, "**", "rollout-*.jsonl.zst"), recursive=True
+        )
+        if zst:
+            print(f"note: .zst 圧縮済みの rollout が {len(zst)} 件ある。codex は 7 日より古い")
+            print("rollout を圧縮するため、直近 1 週間ターンを回していないと 0 件になる。")
     else:
         print("source:", source)
         print(json.dumps(event, ensure_ascii=False, indent=2))

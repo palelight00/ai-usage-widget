@@ -109,6 +109,16 @@ GET https://chatgpt.com/backend-api/codex/usage
   だった。**`primary` = 5 時間枠と決め打ちしないこと**（API 側と同じく、出力は
   枠の長さ順に並べ直す）。
 - 巨大なファイル（数十 MB）があるので末尾 3 MB だけ読む。新しい順に 12 ファイル走査。
+- **現行の codex は 7 日より古い rollout を `.zst` に圧縮する**（mtime 基準・起動時の
+  バックグラウンドジョブ。2026-08-26 に openai/codex のソースで確認）。このスクリプトは
+  素の `.jsonl` しか読まないため、**フォールバックが拾えるのは直近 1 週間ぶんだけ**。
+  `--raw` で「イベントなし」になる主因はこれか、そもそもターンを回していないこと。
+  1 週間より古い値はどのみち表示価値が薄いので、.zst の展開には対応しない。
+- 行フォーマット・保存先・`rate_limits` の同梱は現行ソースでも上記のまま
+  （`sessions/YYYY/MM/DD/rollout-*.jsonl`、`token_count` イベント、`used_percent` /
+  `window_minutes` / unix 秒の `resets_at`。同日に openai/codex のソースで確認）。
+  なお JSONL 側の `credits.balance` は**文字列型**（`Option<String>`）。数値を前提に
+  している金額表示は効かず、保険の「クレジットあり」になる（実物は未観測）。
 
 **JSONL の値は Codex を実際に使ったときにしか更新されない。** `rate_limits` は API
 レスポンスに同梱されて記録されるので、アプリを起動しているだけでは 1 件も増えない
