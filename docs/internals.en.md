@@ -114,11 +114,13 @@ Each line of `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` is one event. Lines 
   the weekly window. **Do not assume `primary` is the 5-hour window** (as on the API path,
   the output is re-sorted by window length).
 - Some files are tens of MB, so only the last 3 MB is read, across the 12 newest files.
-- **Current codex compresses rollouts older than 7 days to `.zst`** (by mtime, via a
-  background job at startup; verified in the openai/codex source on 2026-08-26). This
-  script only reads plain `.jsonl`, so **the fallback covers roughly the last week**.
-  "No events" from `--raw` usually means either this, or that no turns have been run.
-  Values older than a week are barely worth showing anyway, so `.zst` is not decompressed.
+- **The openai/codex development source compresses rollouts older than 7 days to `.zst`**
+  (by mtime, via a background job at startup; verified in the source on 2026-08-26). This
+  script only reads plain `.jsonl`, so once that ships, **the fallback covers roughly the
+  last week**. However, **on the author's machine (same day) rollouts from 2026-06 were
+  still uncompressed** — the installed release apparently does not do this yet, so today's
+  "no events" means "no recent turns", not compression. Values older than a week are
+  barely worth showing anyway, so `.zst` is not decompressed.
 - The line format, location and embedded `rate_limits` are unchanged in the current source
   (`sessions/YYYY/MM/DD/rollout-*.jsonl`, `token_count` events, `used_percent` /
   `window_minutes` / unix-seconds `resets_at`; checked the same day). Note the JSONL
