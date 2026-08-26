@@ -180,7 +180,7 @@ Layout differs by size, because small and medium are only 158pt tall:
 
 | Size | Layout | Contents |
 |---|---|---|
-| small | 1 column | Claude 2 windows + Codex (`weekly_scoped` omitted — it is a subset of weekly) |
+| small | 1 column | Claude 2 windows + Codex weekly (`weekly_scoped` omitted — it is a subset of weekly. When Codex also has a 5-hour window, only its longest window is shown) |
 | medium | **2 columns** (Claude \| Codex) | All windows + reset times (compact `MM/DD HH:MM`, inline) |
 | large | 1 column | All windows + time until reset with date (`in 3d (08/20 13:02)`) + credits |
 
@@ -236,7 +236,7 @@ The log line tells you a lot:
 
 ## Version
 
-`0.12.0`. See [CHANGELOG.md](CHANGELOG.md).
+`0.13.0`. See [CHANGELOG.md](CHANGELOG.md).
 
 It runs reliably for the author, but **nobody else has installed it yet**, so it is 0.9.
 During development a bug was found where `install.sh` failed under a Japanese locale but

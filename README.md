@@ -181,7 +181,7 @@ Claude と Codex はサービスごとにグループ分けし、見出し・区
 
 | サイズ | レイアウト | 表示内容 |
 |---|---|---|
-| small | 1 列 | Claude の 2 枠と Codex（`weekly_scoped` は週次枠の内訳のため省略） |
+| small | 1 列 | Claude の 2 枠と Codex の週次（`weekly_scoped` は週次枠の内訳のため省略。Codex に 5 時間枠があるときは最長の枠だけを表示） |
 | medium | **2 列**（Claude ｜ Codex） | すべての枠、リセット日時（`MM/DD HH:MM` を行内に簡略表示） |
 | large | 1 列 | すべての枠、リセットまでの時間と日時（`3日後（08/20 13:02）`）、クレジット |
 
@@ -238,7 +238,7 @@ tail -n 20 ~/.ai-usage/fetch.log     # launchd での実行結果を確認
 
 ## バージョン
 
-`0.12.0` です。変更履歴は [CHANGELOG.md](CHANGELOG.md) にあります。
+`0.13.0` です。変更履歴は [CHANGELOG.md](CHANGELOG.md) にあります。
 
 作者の環境では安定して動作していますが、**作者以外の環境での導入例がまだありません。**
 開発中には、シェルのロケールが異なるだけで `install.sh` が失敗する不具合が見つかりました

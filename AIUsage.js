@@ -9,12 +9,12 @@
 //
 // サービスごとにグループ化し、見出し・区切り・サービス色で Claude / Codex を見分ける。
 // サイズごとに入る情報量が違うので、レイアウト自体を変える:
-//   small  … 1 列。Claude 2 枠 + Codex。縦 158pt に収めるため副次的な枠は省く
+//   small  … 1 列。Claude 2 枠 + Codex 1 枠。縦 158pt に収めるため副次的な枠は省く
 //   medium … 2 列（Claude | Codex）。縦が足りないので横幅を使い、リセット日時は行内へ
 //   large  … 1 列。全枠 + リセットまでの時間と日時 + 追加クレジット
 
 // ai_usage_fetch.py の __version__ と揃えること
-const VERSION = "0.12.0";
+const VERSION = "0.13.0";
 
 const FILE_NAME = "ai-usage.json";
 const CACHE_FILE_NAME = "ai-usage-cache.json"; // 端末内の控え（iCloud が読めないとき用）
@@ -37,6 +37,19 @@ const STALE_AFTER_MINUTES = 150; // これより古ければ警告色にする�
 
 // small で省く枠。Claude の weekly_scoped はモデル別の内訳で、週次全体の部分集合。
 const SMALL_SKIP_KEYS = ["weekly_scoped"];
+
+// small では Codex を 1 枠に絞る。2026-08 に ChatGPT へ 5 時間制限が追加されて
+// Codex も 2 枠になりうるが、縦 158pt に 4 バーは入らない。どのスロット
+// （primary / secondary）にどの枠が入るかは決め打ちせず、いちばん長い枠
+// （週次があれば週次）を残す。5 時間枠は medium / large で見る。
+// 長さが読めない枠しか無ければ先頭をそのまま返す。
+function longestWindow(windows) {
+  return windows.reduce((best, w) => {
+    const len = typeof w.window_minutes === "number" ? w.window_minutes : -1;
+    const bestLen = typeof best.window_minutes === "number" ? best.window_minutes : -1;
+    return len > bestLen ? w : best;
+  });
+}
 
 // --- 表示言語 -------------------------------------------------------------------
 // 端末の言語に合わせる。日本語以外はすべて英語にする。
@@ -494,14 +507,19 @@ function buildGroups(payload, family) {
   const groups = [];
   const sources = [
     { name: "Claude", accent: COLOR.claude, data: payload.claude },
-    { name: "Codex", accent: COLOR.codex, data: payload.codex },
+    { name: "Codex", accent: COLOR.codex, data: payload.codex, smallOnlyLongest: true },
   ];
 
   for (const src of sources) {
     const data = src.data;
     if (!data) continue;
-    const rows = (data.windows || [])
-      .filter((w) => family !== "small" || SMALL_SKIP_KEYS.indexOf(w.key) === -1)
+    let windows = (data.windows || []).filter(
+      (w) => family !== "small" || SMALL_SKIP_KEYS.indexOf(w.key) === -1
+    );
+    if (family === "small" && src.smallOnlyLongest && windows.length > 1) {
+      windows = [longestWindow(windows)];
+    }
+    const rows = windows
       // ラベルは Mac 側の日本語を使わず、端末の言語で組み立て直す
       .map((w) => ({ label: windowLabel(w), percent: w.percent, resetsAt: w.resets_at }));
     if (rows.length === 0 && (!data.status || data.status === "ok")) continue;

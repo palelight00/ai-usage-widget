@@ -62,8 +62,11 @@ JSONL を見てから書き直したのが現在の `ai_usage_fetch.py`。確定
   リフレッシュトークンは自前で使わない（ローテートするため CLI を壊す）。
 - Codex の `resets_at` / `reset_at` は **unix 秒**（Claude 側は ISO 文字列）。
   枠の長さは API が `limit_window_seconds`、JSONL が `window_minutes` で**単位が違う**。
-  現行 team プランは secondary が `null` で週次のみなので、
-  **`primary` = 5 時間枠と決め打ちしない**（枠の長さで判定する）。
+  **2026-08 に ChatGPT へ 5 時間制限が追加され、週次と合わせて 2 枠返りうる**
+  （それまでの team プランは secondary が `null` で週次のみだった）。どのスロットに
+  どの枠が入るかは**決め打ちせず、枠の長さで判定する**。出力の `windows` は長さ順
+  （5 時間 → 週次）に並べ、small は Codex を最長の 1 枠に絞る（4 バーは入らない）。
+  ※ 5 時間枠を含む実レスポンスは未採取。`--raw` で見たら internals.md を実物に合わせること。
 
 キー名の詳細と出力フォーマットは `docs/internals.md` に写してある。
 

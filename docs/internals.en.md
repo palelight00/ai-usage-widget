@@ -60,6 +60,13 @@ GET https://chatgpt.com/backend-api/codex/usage
 
 - `limit_window_seconds` is in **seconds** (the JSONL uses `window_minutes` — different unit).
 - `reset_at` is unix seconds.
+- **ChatGPT gained a 5-hour limit in 2026-08.** The sample above (captured 2026-07-26) has
+  `secondary_window: null`, but since then two windows — 5-hour (18000 s) and weekly — can
+  come back. Which slot carries which is not assumed; the window is identified by
+  `limit_window_seconds`, and the output `windows` are sorted by window length
+  (5-hour → weekly, `sort_codex_windows()`).
+  Note: a real response containing the 5-hour window has not been captured yet — if it does
+  not match, run `--raw` and fix this section.
 - `/backend-api/wham/usage` returns the same response (an alias — switch to it if one disappears).
 - 401/403 are `login_required`. **Whatever the failure, it falls back to the JSONL below**,
   because the last known values are still recorded there even when the token has expired.
@@ -85,9 +92,10 @@ Each line of `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` is one event. Lines 
 ```
 
 - `resets_at` is **unix seconds** (Claude uses ISO strings).
-- The window type is decided from `window_minutes` (`10080` = weekly). On the current team
-  plan `secondary` is `null` and only the weekly window exists.
-  **Do not assume `primary` is the 5-hour window.**
+- The window type is decided from `window_minutes` (`300` = 5-hour, `10080` = weekly).
+  Until the 5-hour limit arrived in 2026-08, the team plan had `secondary: null` and only
+  the weekly window. **Do not assume `primary` is the 5-hour window** (as on the API path,
+  the output is re-sorted by window length).
 - Some files are tens of MB, so only the last 3 MB is read, across the 12 newest files.
 
 **The JSONL only updates when Codex is actually used.** `rate_limits` is recorded as part
@@ -123,10 +131,17 @@ hour old (a bad `status` takes display priority). Via the endpoint it is
     "observed_age_seconds": 0,
     "source": "api",
     "plan": "team",
-    "windows": [{"key":"primary","label":"週次","percent":15.0,"resets_at":"...","window_minutes":10080}]
+    "windows": [
+      {"key":"primary","label":"5時間","percent":8.0,"resets_at":"...","window_minutes":300},
+      {"key":"secondary","label":"週次","percent":15.0,"resets_at":"...","window_minutes":10080}
+    ]
   }
 }
 ```
+
+Codex `windows` are sorted by window length (short → long). `key` merely echoes the slot
+name from the response — **which `key` carries which window is not guaranteed** (judge by
+length).
 
 `status` is one of `ok` / `empty` / `login_required` / `http_<code>` /
 `error:<type>` / `parse_error:<type>`. `empty` means **the request succeeded but not a
@@ -182,6 +197,12 @@ above 80% — so the colour carries both identity and warning.
 **The layout changes per size.** small and medium are only 158pt tall; four windows plus
 headings do not fit even with smaller fonts. medium is 338pt wide, so instead of cramming
 vertically it uses two columns.
+
+**small narrows Codex to its single longest window** (`longestWindow()`). With the 5-hour
+limit added in 2026-08 Codex can have two windows, but Claude 2 + Codex 2 = 4 bars do not
+fit in small. The weekly window is the budget you cannot win back, so it stays visible at
+a glance; the 5-hour window recovers on its own within hours and is left to medium /
+large. Claude keeps its two windows (5-hour, weekly) as before.
 
 Dimensions are centralised in `SIZE` (fonts, padding) and `contentWidthFor()` (bar width).
 If more windows are added and it overflows, trim there. A bar cannot be filled

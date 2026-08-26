@@ -57,6 +57,11 @@ GET https://chatgpt.com/backend-api/codex/usage
 
 - `limit_window_seconds` は**秒**（JSONL 側の `window_minutes` とは単位が違う）。
 - `reset_at` は unix 秒。
+- **2026-08 に ChatGPT へ 5 時間制限が追加された。**上の実例（2026-07-26 採取）は
+  `secondary_window` が `null` だが、以降は 5 時間（18000 秒）と週次の 2 枠が返りうる。
+  どのスロットに入るかは決め打ちせず `limit_window_seconds` で判定し、出力の
+  `windows` は枠の長さ順（5 時間 → 週次）に並べる（`sort_codex_windows()`）。
+  ※ 5 時間枠を含む実レスポンスは未採取。合わなければ `--raw` で見てここを直す。
 - `/backend-api/wham/usage` も同一のレスポンスを返す（別名。片方が消えたら乗り換え先）。
 - 401/403 は `login_required`。**失敗の種類によらず、下の JSONL にフォールバックする**
   （トークンが切れていても JSONL には最後の値が残っているため）。
@@ -82,8 +87,10 @@ GET https://chatgpt.com/backend-api/codex/usage
 ```
 
 - `resets_at` は **unix 秒**（Claude 側は ISO 文字列）。
-- `window_minutes` で枠の種類を判定する（`10080` = 週次）。現行の team プランは
-  `secondary` が `null` で週次のみ。**`primary` = 5 時間枠と決め打ちしないこと。**
+- `window_minutes` で枠の種類を判定する（`300` = 5 時間、`10080` = 週次）。
+  2026-08 の 5 時間制限追加までは、team プランは `secondary` が `null` で週次のみ
+  だった。**`primary` = 5 時間枠と決め打ちしないこと**（API 側と同じく、出力は
+  枠の長さ順に並べ直す）。
 - 巨大なファイル（数十 MB）があるので末尾 3 MB だけ読む。新しい順に 12 ファイル走査。
 
 **JSONL の値は Codex を実際に使ったときにしか更新されない。** `rate_limits` は API
@@ -140,10 +147,16 @@ GET https://chatgpt.com/backend-api/codex/usage
     "source": "api",
     "plan": "team",
     "token_expires_at": "...",
-    "windows": [{"key":"primary","label":"週次","percent":15.0,"resets_at":"...","window_minutes":10080}]
+    "windows": [
+      {"key":"primary","label":"5時間","percent":8.0,"resets_at":"...","window_minutes":300},
+      {"key":"secondary","label":"週次","percent":15.0,"resets_at":"...","window_minutes":10080}
+    ]
   }
 }
 ```
+
+Codex の `windows` は枠の長さ順（短い → 長い）。`key` はレスポンスのスロット名を
+そのまま持たせているだけで、**どの `key` がどの枠かは保証しない**（長さで見ること）。
 
 `status` は `ok` / `empty` / `login_required` / `http_<code>` /
 `error:<型名>` / `parse_error:<型名>`。`empty` は**通信は成功したのに枠が 1 件も
@@ -195,6 +208,11 @@ Claude と Codex はサービスごとにグループ化し、見出し・区切
 **サイズごとにレイアウトを変える。** small / medium は縦 158pt しかなく、
 4 枠 + 見出しはフォントを縮めても入らない。medium は横 338pt あるので、
 縦に詰めるのではなく 2 列にした。
+
+**small は Codex を最長の 1 枠に絞る**（`longestWindow()`）。2026-08 の 5 時間制限
+追加で Codex も 2 枠になりうるが、Claude 2 枠 + Codex 2 枠 = 4 バーは small に
+入らない。週次は取り戻せない予算なので一目で見る対象として残し、数時間で自然回復
+する 5 時間枠は medium / large に任せる。Claude の 2 枠（5 時間・週次）は従来どおり。
 
 寸法は `SIZE`（フォント・余白）と `contentWidthFor()`（バー幅）に集約してある。
 枠が増えて溢れたらここを削る。バーは幅を明示しないと比率で塗れないので、

@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 
 # 壊れる前提のツールなので、利用者が「どの版か」を言えるようにしておく。
 # AIUsage.js の VERSION と揃えること。
-__version__ = "0.12.0"
+__version__ = "0.13.0"
 
 # --- 実物を見て決めた定数。壊れたら --raw で確認してここを直す -----------------
 
@@ -171,6 +171,22 @@ def window_label(minutes) -> str:
     if minutes % 60 == 0:
         return f"{int(minutes // 60)}時間"
     return f"{int(minutes)}分"
+
+
+def sort_codex_windows(windows: list) -> list:
+    """Codex の枠を長さ順（短い → 長い）に並べる。
+
+    2026-08 に ChatGPT へ 5 時間制限が追加され、週次と合わせて 2 枠返りうる。
+    どのスロット（primary / secondary）にどの枠が入るかは決め打ちしないので、
+    表示順はここで揃える（5 時間 → 週次。Claude の session → weekly と同じ並び）。
+    長さが読めない枠は最後に置く。
+    """
+
+    def length(window):
+        minutes = window.get("window_minutes")
+        return minutes if isinstance(minutes, (int, float)) else float("inf")
+
+    return sorted(windows, key=length)
 
 
 # --- Claude -------------------------------------------------------------------
@@ -540,7 +556,7 @@ def parse_codex_api(raw: dict) -> dict:
         "observed_age_seconds": 0,
         "source": "api",
         "plan": raw.get("plan_type"),
-        "windows": windows,
+        "windows": sort_codex_windows(windows),
     }
     if limit.get("limit_reached"):
         result["limit_reached"] = True
@@ -642,7 +658,7 @@ def parse_codex(event: dict, source_file: str | None) -> dict:
         "observed_age_seconds": age,
         "source": os.path.basename(source_file) if source_file else None,
         "plan": limits.get("plan_type"),
-        "windows": windows,
+        "windows": sort_codex_windows(windows),
     }
 
     credits = limits.get("credits")
