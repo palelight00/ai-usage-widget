@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 
 # 壊れる前提のツールなので、利用者が「どの版か」を言えるようにしておく。
 # AIUsage.js の VERSION と揃えること。
-__version__ = "0.14.2"
+__version__ = "0.14.3"
 
 # --- 実物を見て決めた定数。壊れたら --raw で確認してここを直す -----------------
 
@@ -65,7 +65,12 @@ ICLOUD_FORCE_WRITE_SECONDS = 2 * 3600
 CODEX_AUTH_FILE = os.path.expanduser("~/.codex/auth.json")
 CODEX_USAGE_URL = "https://chatgpt.com/backend-api/codex/usage"
 CODEX_SESSIONS_DIR = os.path.expanduser("~/.codex/sessions")
-CODEX_SCAN_FILES = 12  # 新しい順に何ファイルまで見るか
+# 「有効な rate_limits イベントが取れたファイル」を新しい順にいくつまで比べるか。
+# 単純なファイル数で数えてはいけない: デスクトップアプリはターンを伴わない
+# セッションのスタブ（token_count はあるが rate_limits: null）を一斉に作ることが
+# あり（実測: 深夜に 12 個/秒）、それだけで窓が埋まって実イベントを見失う。
+CODEX_SCAN_FILES = 12
+CODEX_SCAN_FILES_MAX = 120  # スタブだらけでも読み過ぎないための上限
 CODEX_TAIL_BYTES = 3_000_000  # 巨大 JSONL は末尾だけ読む
 # 現行の codex は 7 日より古い rollout を .zst に圧縮する（mtime 基準・起動時の
 # バックグラウンドジョブ。2026-08-26 に openai/codex のソースで確認）。ここは素の
@@ -606,10 +611,17 @@ def iter_tail_lines(path: str):
 
 
 def find_latest_codex_event() -> tuple[dict | None, str | None]:
-    """いちばん新しい rate_limits イベントと、その出所ファイルを返す。"""
+    """いちばん新しい rate_limits イベントと、その出所ファイルを返す。
+
+    有効なイベントが取れたファイルを CODEX_SCAN_FILES 件集めるまで、新しい順に
+    走査を続ける（上限 CODEX_SCAN_FILES_MAX）。rate_limits が null のスタブは
+    窓の消費に数えない。ファイル名はローカル時刻・行内の timestamp は UTC なので、
+    比較には行内の timestamp（同一書式の ISO 文字列）だけを使う。
+    """
     best = None
     best_file = None
-    for path in codex_rollout_files()[:CODEX_SCAN_FILES]:
+    files_with_event = 0
+    for path in codex_rollout_files()[:CODEX_SCAN_FILES_MAX]:
         for line in iter_tail_lines(path):
             if "rate_limits" not in line:
                 continue
@@ -623,7 +635,10 @@ def find_latest_codex_event() -> tuple[dict | None, str | None]:
             stamp = event.get("timestamp") or ""
             if best is None or stamp > (best.get("timestamp") or ""):
                 best, best_file = event, path
+            files_with_event += 1
             break  # このファイルでいちばん新しい 1 件だけで十分
+        if files_with_event >= CODEX_SCAN_FILES:
+            break
     return best, best_file
 
 
