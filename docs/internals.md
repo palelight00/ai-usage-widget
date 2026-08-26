@@ -34,6 +34,10 @@ security find-generic-password -s "Claude Code-credentials" -w
 `percent` も `utilization` も 0–100 のパーセント（0–1 の割合ではない）。
 401/403 は `login_required` として扱う。
 
+2026-08-26 の再採取では、`limits[]` に `group`（`session` / `weekly`）が増え、
+トップレベルにも `spend` ブロックや多数の実験的キー（ほぼ null）が追加されていた。
+使うキーは変わっておらず、パースへの影響はない。
+
 **`extra_usage.utilization` は未使用のとき null で返る**（月初に実測）。
 0% も表示すべき情報なので、`used_credits` と `monthly_limit` から自分で算出する。
 
@@ -49,19 +53,28 @@ GET https://chatgpt.com/backend-api/codex/usage
 
 ```json
 {"plan_type":"team",
- "rate_limit":{"limit_reached":false,
-   "primary_window":{"used_percent":15,"limit_window_seconds":604800,"reset_at":1785618903},
-   "secondary_window":null},
- "credits":{"has_credits":false,"unlimited":false,"balance":null}}
+ "rate_limit":{"allowed":true,"limit_reached":false,
+   "primary_window":{"used_percent":0,"limit_window_seconds":18000,
+                     "reset_after_seconds":18000,"reset_at":1787774812},
+   "secondary_window":{"used_percent":27,"limit_window_seconds":604800,
+                       "reset_after_seconds":520069,"reset_at":1788276880}},
+ "credits":{"has_credits":true,"unlimited":false,"overage_limit_reached":false,
+            "balance":null,"approx_local_messages":null,"approx_cloud_messages":null},
+ "rate_limit_reset_credits":{"available_count":1,"applicable_available_count":0}}
 ```
+
+（2026-08-26 採取。`user_id` / `account_id` / `email` も返るが個人情報なのでここには
+載せない。ほかに `code_review_rate_limit` / `additional_rate_limits` /
+`spend_control` / `promo` など null 中心のキーがある。いずれも未使用。）
 
 - `limit_window_seconds` は**秒**（JSONL 側の `window_minutes` とは単位が違う）。
 - `reset_at` は unix 秒。
-- **2026-08 に ChatGPT へ 5 時間制限が追加された。**上の実例（2026-07-26 採取）は
-  `secondary_window` が `null` だが、以降は 5 時間（18000 秒）と週次の 2 枠が返りうる。
-  どのスロットに入るかは決め打ちせず `limit_window_seconds` で判定し、出力の
-  `windows` は枠の長さ順（5 時間 → 週次）に並べる（`sort_codex_windows()`）。
-  ※ 5 時間枠を含む実レスポンスは未採取。合わなければ `--raw` で見てここを直す。
+- **2026-08 に ChatGPT へ 5 時間制限が追加された。**2026-07-26 採取時は
+  `primary_window` = 週次・`secondary_window` = `null` だったが、2026-08-26 の
+  再採取で `primary_window` = 5 時間（18000 秒）・`secondary_window` = 週次に
+  変わっていた（上の実例）。**スロットの中身が入れ替わった実績がある**ので、
+  どのスロットに何が入るかは決め打ちせず `limit_window_seconds` で判定し、
+  出力の `windows` は枠の長さ順（5 時間 → 週次）に並べる（`sort_codex_windows()`）。
 - `/backend-api/wham/usage` も同一のレスポンスを返す（別名。片方が消えたら乗り換え先）。
 - 401/403 は `login_required`。**失敗の種類によらず、下の JSONL にフォールバックする**
   （トークンが切れていても JSONL には最後の値が残っているため）。
@@ -70,9 +83,13 @@ GET https://chatgpt.com/backend-api/codex/usage
   `status` は `ok` のままにする（前回値より、古くとも実データを優先する）。
   前回値の引き継ぎに落ちるのは、API も JSONL も駄目なときだけ。
 
-`credits` は `has_credits` が常に false で、**実物を見たことがない。**
-単位が不明なので、`overage_limit_reached` と `approx_local_messages` /
-`approx_cloud_messages` も判断材料として出力に残してある。
+`credits` は長らく `has_credits` が false だったが、**2026-08-26 に
+`has_credits: true` を初観測した**（5 時間制限の導入と同時期）。ただし `balance` /
+`approx_local_messages` / `approx_cloud_messages` はすべて null、`unlimited` /
+`overage_limit_reached` は false で、**中身のある値はまだ見ていない**。この形だと
+ウィジェットは保険の「クレジットあり」を表示する。単位が不明なので、判断材料に
+なりそうな項目は引き続き出力に残してある。同時に現れた `rate_limit_reset_credits`
+（`available_count` など）は枠リセット用のクレジットらしいが、意味が分かるまで使わない。
 
 ### Codex（フォールバック：rollout JSONL）
 
@@ -205,14 +222,15 @@ Claude と Codex はサービスごとにグループ化し、見出し・区切
 （Claude=オレンジ / Codex=青）で区別する。バーの色は通常時はサービス色だが、
 50% 以上で琥珀、80% 以上で赤に変わる（色分けと警告を両立させるため）。
 
-**サイズごとにレイアウトを変える。** small / medium は縦 158pt しかなく、
-4 枠 + 見出しはフォントを縮めても入らない。medium は横 338pt あるので、
-縦に詰めるのではなく 2 列にした。
+**サイズごとにレイアウトを変える。** small / medium は縦 158pt しかない。
+medium は全枠 + リセット日時が縦に入らないため、横 338pt を使って 2 列にした。
+small はリセット日時を省いたバーだけの表示にし、`weekly_scoped` を除く 4 枠
+（Claude 2 + Codex 2）を 1 列に収める。
 
-**small は Codex を最長の 1 枠に絞る**（`longestWindow()`）。2026-08 の 5 時間制限
-追加で Codex も 2 枠になりうるが、Claude 2 枠 + Codex 2 枠 = 4 バーは small に
-入らない。週次は取り戻せない予算なので一目で見る対象として残し、数時間で自然回復
-する 5 時間枠は medium / large に任せる。Claude の 2 枠（5 時間・週次）は従来どおり。
+**small の 4 バーは作者の端末（大画面の iPhone）で収まることを実機確認済み。**
+2026-08 の 5 時間制限追加で Codex が 2 枠になった際、一度は Codex を最長の 1 枠に
+絞った（0.13.0）が、small で 5 時間枠の逼迫に気づけなくなるため 0.14.0 で戻した。
+画面の小さい端末で溢れる場合は `SIZE.small` の余白・フォントを削ること。
 
 寸法は `SIZE`（フォント・余白）と `contentWidthFor()`（バー幅）に集約してある。
 枠が増えて溢れたらここを削る。バーは幅を明示しないと比率で塗れないので、

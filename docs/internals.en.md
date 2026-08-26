@@ -36,6 +36,10 @@ security find-generic-password -s "Claude Code-credentials" -w
 Both `percent` and `utilization` are 0–100 percentages, not 0–1 ratios.
 401/403 are treated as `login_required`.
 
+A re-capture on 2026-08-26 showed `limits[]` entries gaining a `group` field
+(`session` / `weekly`) and the top level gaining a `spend` block plus many mostly-null
+experimental keys. The keys actually used are unchanged, so parsing is unaffected.
+
 **`extra_usage.utilization` comes back null when nothing has been used** (observed at the
 start of a month). 0% is information worth showing, so it is computed from `used_credits`
 and `monthly_limit` instead.
@@ -52,21 +56,29 @@ GET https://chatgpt.com/backend-api/codex/usage
 
 ```json
 {"plan_type":"team",
- "rate_limit":{"limit_reached":false,
-   "primary_window":{"used_percent":15,"limit_window_seconds":604800,"reset_at":1785618903},
-   "secondary_window":null},
- "credits":{"has_credits":false,"unlimited":false,"balance":null}}
+ "rate_limit":{"allowed":true,"limit_reached":false,
+   "primary_window":{"used_percent":0,"limit_window_seconds":18000,
+                     "reset_after_seconds":18000,"reset_at":1787774812},
+   "secondary_window":{"used_percent":27,"limit_window_seconds":604800,
+                       "reset_after_seconds":520069,"reset_at":1788276880}},
+ "credits":{"has_credits":true,"unlimited":false,"overage_limit_reached":false,
+            "balance":null,"approx_local_messages":null,"approx_cloud_messages":null},
+ "rate_limit_reset_credits":{"available_count":1,"applicable_available_count":0}}
 ```
+
+(Captured 2026-08-26. The response also carries `user_id` / `account_id` / `email` —
+personal data, so not reproduced here — plus mostly-null keys such as
+`code_review_rate_limit` / `additional_rate_limits` / `spend_control` / `promo`.
+None of them are used.)
 
 - `limit_window_seconds` is in **seconds** (the JSONL uses `window_minutes` — different unit).
 - `reset_at` is unix seconds.
-- **ChatGPT gained a 5-hour limit in 2026-08.** The sample above (captured 2026-07-26) has
-  `secondary_window: null`, but since then two windows — 5-hour (18000 s) and weekly — can
-  come back. Which slot carries which is not assumed; the window is identified by
-  `limit_window_seconds`, and the output `windows` are sorted by window length
-  (5-hour → weekly, `sort_codex_windows()`).
-  Note: a real response containing the 5-hour window has not been captured yet — if it does
-  not match, run `--raw` and fix this section.
+- **ChatGPT gained a 5-hour limit in 2026-08.** On 2026-07-26 the capture showed
+  `primary_window` = weekly and `secondary_window: null`; by 2026-08-26 it had become
+  `primary_window` = 5-hour (18000 s) and `secondary_window` = weekly (the sample above).
+  **The slot contents have demonstrably swapped once already**, so which slot carries which
+  is never assumed: the window is identified by `limit_window_seconds`, and the output
+  `windows` are sorted by window length (5-hour → weekly, `sort_codex_windows()`).
 - `/backend-api/wham/usage` returns the same response (an alias — switch to it if one disappears).
 - 401/403 are `login_required`. **Whatever the failure, it falls back to the JSONL below**,
   because the last known values are still recorded there even when the token has expired.
@@ -75,9 +87,14 @@ GET https://chatgpt.com/backend-api/codex/usage
   `status` stays `ok` — real but stale data beats carrying the previous result forward.
   Carrying forward only happens when both the API and the JSONL fail.
 
-`credits` always has `has_credits: false`, so **it has never been seen populated.**
-The unit of `balance` is unknown, so `overage_limit_reached` and `approx_local_messages` /
-`approx_cloud_messages` are kept in the output as additional evidence.
+`credits` had `has_credits: false` for a long time, but **`has_credits: true` was first
+observed on 2026-08-26** (around when the 5-hour limit arrived). `balance` /
+`approx_local_messages` / `approx_cloud_messages` were all still null and `unlimited` /
+`overage_limit_reached` false, so **no meaningful value has been seen yet** — in this shape
+the widget shows the fallback "credits available" line. The unit of `balance` is unknown,
+so the candidate fields are still kept in the output as evidence. The
+`rate_limit_reset_credits` block (`available_count` etc.) that appeared at the same time
+looks like credits for resetting a window; it stays unused until its meaning is clear.
 
 ### Codex (fallback: rollout JSONL)
 
@@ -194,15 +211,15 @@ Claude and Codex are grouped separately, with a heading, a divider and a per-ser
 (Claude orange, Codex blue). Bars use the service colour normally, amber above 50% and red
 above 80% — so the colour carries both identity and warning.
 
-**The layout changes per size.** small and medium are only 158pt tall; four windows plus
-headings do not fit even with smaller fonts. medium is 338pt wide, so instead of cramming
-vertically it uses two columns.
+**The layout changes per size.** small and medium are only 158pt tall. medium cannot fit
+all windows plus reset times vertically, so it uses its 338pt width for two columns. small
+drops the reset times and shows bars only, fitting the four windows other than
+`weekly_scoped` (Claude 2 + Codex 2) in one column.
 
-**small narrows Codex to its single longest window** (`longestWindow()`). With the 5-hour
-limit added in 2026-08 Codex can have two windows, but Claude 2 + Codex 2 = 4 bars do not
-fit in small. The weekly window is the budget you cannot win back, so it stays visible at
-a glance; the 5-hour window recovers on its own within hours and is left to medium /
-large. Claude keeps its two windows (5-hour, weekly) as before.
+**The four bars in small are confirmed to fit on the author's device (a large-screen
+iPhone).** When Codex gained its second window in 2026-08, small briefly narrowed Codex to
+its longest window (0.13.0), but that hid an approaching 5-hour limit, so 0.14.0 reverted
+it. If it overflows on a smaller device, trim the spacing and fonts in `SIZE.small`.
 
 Dimensions are centralised in `SIZE` (fonts, padding) and `contentWidthFor()` (bar width).
 If more windows are added and it overflows, trim there. A bar cannot be filled
