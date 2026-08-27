@@ -185,8 +185,7 @@ reset times and shows bars only, medium uses its width for two columns.
 | medium | **2 columns** (Claude \| Codex) | All windows + reset times (compact `MM/DD HH:MM`, inline) |
 | large | 1 column | All windows + time until reset with date (`in 3d (08/20 13:02)`) + credits |
 
-The credits line appears only when extra-credit information is available — the screenshots
-above do not show it.
+The credits line appears only when extra-credit information is available.
 
 See [What it looks like](#what-it-looks-like) for screenshots.
 
