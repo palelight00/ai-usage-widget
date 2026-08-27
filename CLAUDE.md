@@ -79,6 +79,8 @@ JSONL を見てから書き直したのが現在の `ai_usage_fetch.py`。確定
   出力の `windows` は長さ順（5 時間 → 週次）。small も 4 バー全部出す
   （作者の端末で収まることを実機確認。溢れる端末は AIUsage.js の `SIZE.small` を削る）。
   同日、Codex の `credits.has_credits: true` を初観測（中身は全部 null。internals.md 参照）。
+  **JSONL 側でも 2026-08-27 に 5 時間 + 週次の 2 枠入り実イベントを採取済み**
+  （CLI v0.147.0。値は HTTP と一致。API・JSONL 両経路の実データ検証が完了）。
 
 キー名の詳細と出力フォーマットは `docs/internals.md` に写してある。
 

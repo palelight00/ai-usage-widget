@@ -21,6 +21,9 @@
   5 時間枠入りの JSONL イベントは未観測のまま
 - 行に `ordinal` フィールドが増えていた（ページネーション形式。パースには影響なし）。
   JSONL 側でも `credits.has_credits: true`（balance は null）を確認
+- その後、修正済みフラグでの `codex exec` が実機で成功し（CLI v0.147.0）、
+  **5 時間枠入りの JSONL イベントを初採取**。primary = 5 時間・secondary = 週次で、
+  使用率も `resets_at` も HTTP 側と一致した。**API・JSONL 両経路の実データ検証が完了**
 
 ## [0.14.3] - 2026-08-27
 

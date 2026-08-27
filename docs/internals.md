@@ -98,10 +98,14 @@ GET https://chatgpt.com/backend-api/codex/usage
 
 ```json
 {"timestamp":"...","type":"event_msg","payload":{"type":"token_count","info":{...},
- "rate_limits":{"limit_id":"codex","primary":{"used_percent":15.0,
- "window_minutes":10080,"resets_at":1785618902},"secondary":null,
- "credits":{"has_credits":false,...},"plan_type":"team"}}}
+ "rate_limits":{"limit_id":"codex","primary":{"used_percent":2.0,
+ "window_minutes":300,"resets_at":1787845387},"secondary":{"used_percent":41.0,
+ "window_minutes":10080,"resets_at":1788276880},
+ "credits":{"has_credits":true,"unlimited":false,"balance":null},"plan_type":"team"}}}
 ```
+
+（2026-08-27 に codex CLI v0.147.0 のターンで採取。使用率も `resets_at` も
+同時刻の HTTP 側と一致していた。）
 
 - `resets_at` は **unix 秒**（Claude 側は ISO 文字列）。
 - `window_minutes` で枠の種類を判定する（`300` = 5 時間、`10080` = 週次）。
@@ -118,12 +122,12 @@ GET https://chatgpt.com/backend-api/codex/usage
   「イベントなし」になった。上の走査ルールはこの対策）。
 - rollout の**ファイル名はローカル時刻、行内の `timestamp` は UTC**。突き合わせる
   ときに 9 時間ずれて見えるのはこのため。イベントの新旧比較は行内の `timestamp` で行う。
-- 2026-08-27 に実イベントを採取（記録自体は 08-24 のターン）。その時点の JSONL は
-  **primary = 週次・secondary = null のまま**だった（HTTP 側は 08-26 時点で
-  primary = 5 時間）。スロットの中身は経路や時期でずれるので、やはり決め打ちしない。
-  行に `ordinal` フィールドが増えていた（ページネーション形式。パースには影響なし）。
+- 2026-08-27 に実イベントを 2 件採取して比較できた。**08-24 のターンの記録は
+  primary = 週次・secondary = null のまま**だったが、**同 27 日の CLI（v0.147.0）の
+  ターンでは primary = 5 時間・secondary = 週次**（上の実例）。同じ JSONL 経路でも
+  時期や CLI の版でスロットの中身が変わるので、やはり決め打ちしない。
+  行に `ordinal` フィールドが付くことがある（ページネーション形式。パースには影響なし）。
   JSONL 側でも `credits.has_credits: true`（`balance` は null）を確認。
-  **5 時間枠入りの JSONL イベントはまだ未観測。**
 - **openai/codex の開発版は 7 日より古い rollout を `.zst` に圧縮する**（mtime 基準・
   起動時のバックグラウンドジョブ。2026-08-26 にソースで確認）。このスクリプトは素の
   `.jsonl` しか読まないため、これが効き始めると**フォールバックが拾えるのは直近

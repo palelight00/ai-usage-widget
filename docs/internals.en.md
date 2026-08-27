@@ -103,10 +103,14 @@ Each line of `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` is one event. Lines 
 
 ```json
 {"timestamp":"...","type":"event_msg","payload":{"type":"token_count","info":{...},
- "rate_limits":{"limit_id":"codex","primary":{"used_percent":15.0,
- "window_minutes":10080,"resets_at":1785618902},"secondary":null,
- "credits":{"has_credits":false,...},"plan_type":"team"}}}
+ "rate_limits":{"limit_id":"codex","primary":{"used_percent":2.0,
+ "window_minutes":300,"resets_at":1787845387},"secondary":{"used_percent":41.0,
+ "window_minutes":10080,"resets_at":1788276880},
+ "credits":{"has_credits":true,"unlimited":false,"balance":null},"plan_type":"team"}}}
 ```
+
+(Captured on 2026-08-27 from a codex CLI v0.147.0 turn. Both the percentages and
+`resets_at` matched the HTTP endpoint at the same time.)
 
 - `resets_at` is **unix seconds** (Claude uses ISO strings).
 - The window type is decided from `window_minutes` (`300` = 5-hour, `10080` = weekly).
@@ -124,12 +128,12 @@ Each line of `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` is one event. Lines 
 - Rollout **file names use local time; the `timestamp` inside each line is UTC** — hence
   the apparent 9-hour offset when cross-checking. Recency comparison uses the in-line
   `timestamp`.
-- A real event was captured on 2026-08-27 (recorded by a turn on 08-24). At that point the
-  JSONL still had **primary = weekly, secondary = null** (the HTTP endpoint had
-  primary = 5-hour by 08-26). Slot contents drift across paths and dates — never assume
-  them. The line had gained an `ordinal` field (paginated format; parsing unaffected).
-  The JSONL also showed `credits.has_credits: true` (`balance` null).
-  **A JSONL event containing the 5-hour window has not been observed yet.**
+- Two real events captured on 2026-08-27 made a direct comparison possible: **the record
+  from an 08-24 turn still had primary = weekly, secondary = null**, while **a turn the
+  same day on CLI v0.147.0 had primary = 5-hour, secondary = weekly** (the sample above).
+  Even on the same JSONL path the slot contents change with the date and CLI version —
+  never assume them. Lines may carry an `ordinal` field (paginated format; parsing
+  unaffected). The JSONL also shows `credits.has_credits: true` (`balance` null).
 - **The openai/codex development source compresses rollouts older than 7 days to `.zst`**
   (by mtime, via a background job at startup; verified in the source on 2026-08-26). This
   script only reads plain `.jsonl`, so once that ships, **the fallback covers roughly the
