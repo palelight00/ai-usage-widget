@@ -34,7 +34,7 @@ The widget follows the device language — Japanese on Japanese devices, English
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/widget-large-dark.jpg">
-    <img src="docs/images/widget-large-light.jpg" width="330" alt="Large widget showing Claude at 31% of the 5-hour window, 10% weekly and 1% weekly (Fable), Codex at 77% weekly, with a line under each bar giving both the time until reset and the date, such as in 58m (08/15 21:59)">
+    <img src="docs/images/widget-large-light.jpg" width="330" alt="Large widget showing Claude at 30% of the 5-hour window, 38% weekly and 27% weekly (Fable), Codex at 2% of the 5-hour window and 27% weekly, with a line under each bar giving both the time until reset and the date, such as in 3h (08/27 03:59)">
   </picture>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/widget-medium-small-dark.jpg">

@@ -33,7 +33,7 @@ iOS の [Scriptable](https://scriptable.app/) ウィジェットがそれを読�
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/widget-large-dark.jpg">
-    <img src="docs/images/widget-large-light.jpg" width="330" alt="large サイズのウィジェット。Claude の 5 時間枠 31%、週次 10%、週次 (Fable) 1%、Codex の週次 77% を表示し、各バーの下に「リセット 58分後（08/15 21:59）」のように残り時間と日時を並べている">
+    <img src="docs/images/widget-large-light.jpg" width="330" alt="large サイズのウィジェット。Claude の 5 時間枠 30%、週次 38%、週次 (Fable) 27%、Codex の 5 時間枠 2%、週次 27% を表示し、各バーの下に「リセット 3時間後（08/27 03:59）」のように残り時間と日時を並べている">
   </picture>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/widget-medium-small-dark.jpg">
