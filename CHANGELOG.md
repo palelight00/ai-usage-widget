@@ -2,6 +2,26 @@
 
 このプロジェクトは [セマンティック バージョニング](https://semver.org/lang/ja/) に従う。
 
+## [0.14.4] - 2026-08-27
+
+### 修正
+
+- **`nudge_codex_cli()` に `--skip-git-repo-check` を足した。**現行の codex exec は
+  cwd が信頼済みディレクトリの外だと「Not inside a trusted directory」で拒否される
+  （実測）。nudge の cwd（`~/.ai-usage`）は AGENTS.md を読ませないため意図的に
+  git リポジトリ外にしてあるので必ず引っかかり、素の `exec` フォールバックも同じ
+  理由で落ちる。つまり現行 CLI では nudge が一度も成功し得ない状態だった
+
+### 分かったこと
+
+- **フォールバック走査の修正（0.14.3）が実環境で機能した。**スタブ 12 個の向こうに
+  ある 2026-08-24 の実イベントを拾えた
+- **08-24 時点の JSONL は primary = 週次・secondary = null のまま**（HTTP 側は
+  08-26 時点で primary = 5 時間）。スロットの中身は経路や時期でずれる。
+  5 時間枠入りの JSONL イベントは未観測のまま
+- 行に `ordinal` フィールドが増えていた（ページネーション形式。パースには影響なし）。
+  JSONL 側でも `credits.has_credits: true`（balance は null）を確認
+
 ## [0.14.3] - 2026-08-27
 
 ### 修正

@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 
 # 壊れる前提のツールなので、利用者が「どの版か」を言えるようにしておく。
 # AIUsage.js の VERSION と揃えること。
-__version__ = "0.14.3"
+__version__ = "0.14.4"
 
 # --- 実物を見て決めた定数。壊れたら --raw で確認してここを直す -----------------
 
@@ -337,15 +337,18 @@ def nudge_codex_cli() -> bool:
     `exec` は非対話でターンを回すので認証を通る。read-only の sandbox を明示して、
     認証を通す以外のことをさせない。承認フラグ（`-a never`）は現行 CLI から消えて
     実際に弾かれた（2026-08-27 実測。`exec` は非対話なので承認自体が無くなった模様）
-    ので付けない。フラグ名は今後も版で変わりうるので、弾かれたら素の `exec` で
-    もう一度試す（引数エラーは即座に非ゼロで返るため、通る版では無駄にならない）。
+    ので付けない。`--skip-git-repo-check` は必須: cwd の STATE_DIR は意図的に
+    git リポジトリ外なので、現行 CLI の信頼済みディレクトリチェックに必ず引っかかる
+    （「Not inside a trusted directory」も実測。素の `exec` も同じ理由で落ちる）。
+    フラグ名は今後も版で変わりうるので、弾かれたら素の `exec` でもう一度試す
+    （引数エラーは即座に非ゼロで返るため、通る版では無駄にならない）。
     """
     try:
         os.makedirs(STATE_DIR, exist_ok=True)
     except OSError:
         pass
     variants = [
-        ["exec", "--sandbox", "read-only", CODEX_REFRESH_PROMPT],
+        ["exec", "--sandbox", "read-only", "--skip-git-repo-check", CODEX_REFRESH_PROMPT],
         ["exec", CODEX_REFRESH_PROMPT],
     ]
     for path in CODEX_CLI_CANDIDATES:

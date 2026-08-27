@@ -124,6 +124,12 @@ Each line of `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` is one event. Lines 
 - Rollout **file names use local time; the `timestamp` inside each line is UTC** — hence
   the apparent 9-hour offset when cross-checking. Recency comparison uses the in-line
   `timestamp`.
+- A real event was captured on 2026-08-27 (recorded by a turn on 08-24). At that point the
+  JSONL still had **primary = weekly, secondary = null** (the HTTP endpoint had
+  primary = 5-hour by 08-26). Slot contents drift across paths and dates — never assume
+  them. The line had gained an `ordinal` field (paginated format; parsing unaffected).
+  The JSONL also showed `credits.has_credits: true` (`balance` null).
+  **A JSONL event containing the 5-hour window has not been observed yet.**
 - **The openai/codex development source compresses rollouts older than 7 days to `.zst`**
   (by mtime, via a background job at startup; verified in the source on 2026-08-26). This
   script only reads plain `.jsonl`, so once that ships, **the fallback covers roughly the
