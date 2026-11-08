@@ -267,12 +267,22 @@ because SwiftUI's `Spacer()` takes at least 8pt (50 cells grow to 400pt, measure
 | iPhone Duo outer 466×678 | 158×158 | 334×158 | 334×354 | Measured in WidgetKit on the simulator |
 | iPhone 440×956 | 176.7×176.7 | 378×176.7 | 378×394 | Same |
 | iPhone 393×852 | 158×158 | 338×158 | 338×354 | HIG table |
-| iPhone Duo inner 669×951 | **unmeasured** | **unmeasured** | **unmeasured** | 141 / 292pt as a placeholder |
+| iPhone Duo inner 669×951 | 158×158 | 334×158 | 334×354 | Measured from device screenshots; shown about 1.2× larger in portrait |
 
 The Duo's outer screen is wide, yet its widgets match a 393pt iPhone: **widget size does not
-scale with screen width**. Screens whose aspect ratio differs from an iPhone (the Duo's inner
-screen, iPad, a Duo with Display Zoom) fall back to the HIG minimum. Once the inner size is
-known, replace the `unknown` branch of `widgetMetrics()` with the measured values.
+scale with screen width**.
+
+**The Duo's inner screen has no widget sizes of its own.** Whether folded or unfolded, and in
+either orientation, widgets are drawn at the outer screen's sizes; only in portrait on the inner
+screen does iOS show them about 1.2× larger (landscape is 1:1; confirmed on 2026-11-08 by
+measuring bar lengths in screenshots of all three sizes on all three screens).
+`Device.screenSize()` inside the widget can also be taken to return 466×678 on the inner screen
+(the small bar is exactly 128pt, a value only the outer-screen branch produces).
+
+Screens whose aspect ratio differs from an iPhone (iPad, a Duo with Display Zoom, etc.) fall back
+to the HIG minimum (the `unknown` branch of `widgetMetrics()`). The Duo never takes this branch.
+It is an unverified safety net, so replace it with measured values once such a device's real
+sizes are known.
 
 Credits can come from either Claude (`extra_usage`) or Codex (`credits`), so **the service
 name and a coloured dot are always attached** — never show a credit line whose owner is

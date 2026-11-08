@@ -279,12 +279,14 @@ function widgetMetrics() {
   const short = Math.min(width, height);
   const long = Math.max(width, height);
 
-  // iPhone Duo の外側画面。画面は広いのにウィジェットは 393pt 級の iPhone と同じ（実測）。
+  // iPhone Duo。画面は広いのにウィジェットは 393pt 級の iPhone と同じ（実測）。
+  // 内側画面でもウィジェットの中ではこの画面サイズが返り、外側と同じ寸法で描かれる。
+  // 内側の縦持ちでは iOS が約 1.2 倍に拡大して表示するだけ（2026-11-08 に実機で実測）。
   if (short === 466 && long === 678) {
     return { small: 158, wide: 334, compact: true, unknown: false };
   }
-  // 縦横比が iPhone と違う画面（iPhone Duo の内側、iPad、画面表示を拡大した Duo）は、
-  // ウィジェットの大きさが画面幅に比例しない。HIG の表の最小値に倒す。
+  // 縦横比が iPhone と違う画面（iPad、画面表示を拡大した Duo など）は、ウィジェットの
+  // 大きさが画面幅に比例しない。HIG の表の最小値に倒す。Duo の内側はここを通らない。
   if (long / short < 1.6) {
     return { small: 141, wide: 292, compact: true, unknown: true };
   }
