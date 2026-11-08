@@ -14,7 +14,7 @@
 //   large  … 1 列。全枠 + リセットまでの時間と日時 + 追加クレジット
 
 // ai_usage_fetch.py の __version__ と揃えること
-const VERSION = "0.14.4";
+const VERSION = "0.14.5";
 
 const FILE_NAME = "ai-usage.json";
 const CACHE_FILE_NAME = "ai-usage-cache.json"; // 端末内の控え（iCloud が読めないとき用）
@@ -36,8 +36,8 @@ const STALE_AFTER_MINUTES = 150; // これより古ければ警告色にする�
 // 2 時間より短い閾値にすると、使っていない時間帯に誤警告が出る。
 
 // small で省く枠。Claude の weekly_scoped はモデル別の内訳で、週次全体の部分集合。
-// Codex の 5 時間枠（2026-08 追加）は省かない。4 バーでも作者の端末では収まり、
-// 省くと small で 5 時間枠の逼迫に気づけない。溢れる端末では SIZE.small を削ること。
+// Codex の 5 時間枠（2026-08 追加）は省かない。省くと small で 5 時間枠の逼迫に気づけない。
+// 溢れる端末では SIZE_COMPACT.small を削ること。
 const SMALL_SKIP_KEYS = ["weekly_scoped"];
 
 // --- 表示言語 -------------------------------------------------------------------
@@ -245,20 +245,65 @@ const SIZE = {
   large: { title: 13, age: 10, section: 11, label: 12, bar: 7, reset: 9, inlineReset: 0, gapRow: 9, gapGroup: 12 },
 };
 
-// バーは幅を明示しないと比率で塗れない。画面幅から実際のウィジェット幅を見積もる。
-// iOS のウィジェット幅は画面幅のおおよそ 40%（small）/ 85%（medium・large は同幅）。
-// 溢れるとレイアウトが崩れるので、余白を引いたうえで上下限で挟む。
-function contentWidthFor(family) {
-  const padding = 13 * 2 + 4; // setPadding の左右 + 安全余白
-  let screen = 393; // 取得できないときの既定値
+// 高さに余裕がない端末用。下端の addSpacer() は最低 8pt を取る（SwiftUI の Spacer の下限）ので、
+// SIZE のままだと small は 170pt、large はクレジットが出ると 359pt 要る。393pt 級の iPhone と
+// iPhone Duo（どちらも 158pt / 354pt）では溢れる。
+const SIZE_COMPACT = {
+  small: Object.assign({}, SIZE.small, { bar: 3, gapRow: 2, gapGroup: 3, rowGap: 2 }),
+  medium: Object.assign({}, SIZE.medium, { bar: 5, gapRow: 4, gapGroup: 5 }),
+  large: Object.assign({}, SIZE.large, { bar: 6, gapRow: 5, gapGroup: 8 }),
+};
+
+// 実寸が分からない端末の large。リセット行をやめて行ラベル横に寄せ、311pt に収める。
+const SIZE_LARGE_UNKNOWN = Object.assign({}, SIZE_COMPACT.large, { reset: 0, inlineReset: 8 });
+
+// リセット日時を行内に出すのに要る幅。行の固定分が 135pt（CHANGELOG 0.11.0 の実測）で、
+// これより狭いと「週次 (Fable)」の接尾辞が切れて週次全体と見分けられなくなる。
+const INLINE_RESET_MIN_WIDTH = 135;
+
+// ウィジェットの実寸。Scriptable は教えてくれないので画面サイズから見積もる。
+// 見積もりが実寸より大きいと左右が切れる。小さい分にはバーが短くなるだけなので、迷ったら小さく。
+//   small / wide … small の一辺（medium の高さでもある）と、medium・large の幅
+//   compact      … SIZE ではなく SIZE_COMPACT を使う
+//   unknown      … 実寸を確かめていない。見積もりが既知の最小値になっている
+function widgetMetrics() {
+  let width = 393; // 取得できないときの既定値
+  let height = 852;
   try {
-    screen = Device.screenSize().width || screen;
+    const screen = Device.screenSize();
+    width = screen.width || width;
+    height = screen.height || height;
   } catch (e) {
     // Device が使えない環境では既定値のまま
   }
-  const ratio = family === "small" ? 0.4 : 0.85;
-  const width = Math.round(screen * ratio) - padding;
-  return Math.max(90, Math.min(340, width));
+  const short = Math.min(width, height);
+  const long = Math.max(width, height);
+
+  // iPhone Duo の外側画面。画面は広いのにウィジェットは 393pt 級の iPhone と同じ（実測）。
+  if (short === 466 && long === 678) {
+    return { small: 158, wide: 334, compact: true, unknown: false };
+  }
+  // 縦横比が iPhone と違う画面（iPhone Duo の内側、iPad、画面表示を拡大した Duo）は、
+  // ウィジェットの大きさが画面幅に比例しない。HIG の表の最小値に倒す。
+  if (long / short < 1.6) {
+    return { small: 141, wide: 292, compact: true, unknown: true };
+  }
+  // 縦長の iPhone は画面幅のおおよそ 40% / 85%。HIG の表とも実測の 440pt とも合う。
+  return { small: short * 0.4, wide: short * 0.85, compact: short < 435, unknown: false };
+}
+
+// バーは幅を明示しないと比率で塗れない。比率ぶんの空きスタックを並べる手は使えない
+// （Spacer の下限が 8pt あり、50 分割で 400pt に膨らむ）。
+function contentWidthFor(family, metrics) {
+  const padding = 13 * 2 + 4; // setPadding の左右 + 安全余白
+  const widget = family === "small" ? metrics.small : metrics.wide;
+  return Math.max(90, Math.min(340, Math.round(widget) - padding));
+}
+
+function sizeFor(family, metrics, compact) {
+  if (!compact) return SIZE[family] || SIZE.medium;
+  if (family === "large" && metrics.unknown) return SIZE_LARGE_UNKNOWN;
+  return SIZE_COMPACT[family] || SIZE_COMPACT.medium;
 }
 
 // --- データ読み込み -------------------------------------------------------------
@@ -594,7 +639,7 @@ function addSectionHeader(stack, group, size, showStale) {
 function addRow(stack, row, group, size, barWidth) {
   const container = stack.addStack();
   container.layoutVertically();
-  container.spacing = 3;
+  container.spacing = size.rowGap || 3;
 
   const head = container.addStack();
   head.centerAlignContent();
@@ -610,7 +655,8 @@ function addRow(stack, row, group, size, barWidth) {
   // リセット日時は % のすぐ左に置く。ラベルの直後だとラベルの長さで開始位置が
   // 動き、行ごとに桁がばらつく（実測で 65pt / 69pt / 107pt と散った）。
   // % の桁数ぶん（1 文字程度）はまだ動くが、ここは深追いしない。
-  const compactReset = size.inlineReset > 0 ? compactResetText(row.resetsAt) : null;
+  const compactReset =
+    size.inlineReset > 0 && barWidth >= INLINE_RESET_MIN_WIDTH ? compactResetText(row.resetsAt) : null;
   if (compactReset) {
     const reset = head.addText(compactReset);
     reset.font = Font.systemFont(size.inlineReset);
@@ -710,15 +756,23 @@ function addCreditLine(widget, service, accent, text) {
 }
 
 function buildWidget(payload, family) {
-  const size = SIZE[family] || SIZE.medium;
-  const width = contentWidthFor(family);
+  // payload が落ちてくる経路は増えうるので、ここで最終的に守る
+  const failed = !payload || typeof payload !== "object" || payload.error;
+  const note = failed ? "" : statusNote(payload);
+  const metrics = widgetMetrics();
+  // 注記の行が増えるぶん、余裕のある端末でも詰める（small は 440pt でも 3pt 溢れる）
+  const compact = metrics.compact || Boolean(note);
+  const size = sizeFor(family, metrics, compact);
+  const width = contentWidthFor(family, metrics);
 
   const widget = new ListWidget();
   widget.backgroundColor = COLOR.bg;
-  widget.setPadding(12, 13, 12, 13);
+  // compact の下余白は小さく見えるが、下端の addSpacer() の 8pt と合わせて 10pt になる。
+  // 注記やクレジットはその Spacer より下に来るので、そのぶんだけ余白を足す。
+  const compactBottom = note || family === "large" ? 5 : 2;
+  widget.setPadding(compact ? 10 : 12, 13, compact ? compactBottom : 12, 13);
 
-  // payload が落ちてくる経路は増えうるので、ここで最終的に守る
-  if (!payload || typeof payload !== "object" || payload.error) {
+  if (failed) {
     const title = widget.addText(T.title);
     title.font = Font.boldSystemFont(size.title);
     title.textColor = COLOR.text;
@@ -770,7 +824,6 @@ function buildWidget(payload, family) {
 
   widget.addSpacer();
 
-  const note = statusNote(payload);
   if (note) {
     const noteText = widget.addText(note);
     noteText.font = Font.systemFont(family === "small" ? 8 : 9);

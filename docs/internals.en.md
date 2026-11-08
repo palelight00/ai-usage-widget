@@ -248,15 +248,31 @@ all windows plus reset times vertically, so it uses its 338pt width for two colu
 drops the reset times and shows bars only, fitting the four windows other than
 `weekly_scoped` (Claude 2 + Codex 2) in one column.
 
-**The four bars in small are confirmed to fit on the author's device (a large-screen
-iPhone).** When Codex gained its second window in 2026-08, small briefly narrowed Codex to
-its longest window (0.13.0), but that hid an approaching 5-hour limit, so 0.14.0 reverted
-it. If it overflows on a smaller device, trim the spacing and fonts in `SIZE.small`.
+**The four bars in small are confirmed to fit on a 440pt iPhone.** When Codex gained its
+second window in 2026-08, small briefly narrowed Codex to its longest window (0.13.0), but
+that hid an approaching 5-hour limit, so 0.14.0 reverted it. Shorter widgets use
+`SIZE_COMPACT` (see the table below).
 
-Dimensions are centralised in `SIZE` (fonts, padding) and `contentWidthFor()` (bar width).
-If more windows are added and it overflows, trim there. A bar cannot be filled
-proportionally without an explicit width, so the real width is estimated from the screen
-and clamped.
+Dimensions are centralised in `SIZE` / `SIZE_COMPACT` (fonts, padding) and `widgetMetrics()`
+(the estimated real widget size). If more windows are added and it overflows, trim there.
+
+**Scriptable does not expose the real widget size**, so it is estimated from
+`Device.screenSize()`. An estimate larger than the real size clips the sides, while a smaller
+one only shortens the bars, so when in doubt it errs small. A bar cannot be filled
+proportionally without an explicit width. Laying out proportional empty stacks does not work,
+because SwiftUI's `Spacer()` takes at least 8pt (50 cells grow to 400pt, measured).
+
+| Screen (short × long) | small | medium | large | Source |
+|---|---|---|---|---|
+| iPhone Duo outer 466×678 | 158×158 | 334×158 | 334×354 | Measured in WidgetKit on the simulator |
+| iPhone 440×956 | 176.7×176.7 | 378×176.7 | 378×394 | Same |
+| iPhone 393×852 | 158×158 | 338×158 | 338×354 | HIG table |
+| iPhone Duo inner 669×951 | **unmeasured** | **unmeasured** | **unmeasured** | 141 / 292pt as a placeholder |
+
+The Duo's outer screen is wide, yet its widgets match a 393pt iPhone: **widget size does not
+scale with screen width**. Screens whose aspect ratio differs from an iPhone (the Duo's inner
+screen, iPad, a Duo with Display Zoom) fall back to the HIG minimum. Once the inner size is
+known, replace the `unknown` branch of `widgetMetrics()` with the measured values.
 
 Credits can come from either Claude (`extra_usage`) or Codex (`credits`), so **the service
 name and a coloured dot are always attached** — never show a credit line whose owner is
